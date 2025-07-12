@@ -1,39 +1,36 @@
-import React, { useState, useContext, createContext, useCallback } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 
 const AuthContext = createContext();
-export const useAuth = () => useContext(AuthContext);
-
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);          // null | { email, role }
-  const [page, setPage] = useState('login');       // simple pseudo‑router
+  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('login');
 
-  /* ------------ auth helpers ------------ */
-  const login = (email, password, role) => {
-    if (!email || !password) return false;
-    const mockUser = { email, role };
-    setUser(mockUser);
-    setPage(
-      role === 'student'
-        ? 'studentDashboard'
-        : role === 'staff'
-        ? 'staffDashboard'
-        : 'adminDashboard'
-    );
-    return true;
+  const login = (email, pwd, role) => {
+    if (email && pwd) {
+      const mockUser = { email, role };
+      setUser(mockUser);
+      setCurrentPage(role+'Dashboard');
+      return true;
+    }
+    return false;
   };
-
-  const register = (form) => console.log('registering', form); // TODO hook to API
-  const logout   = () => { setUser(null); setPage('login'); };
-
-  /* ------------ simple navigate() ------------ */
-  const navigate = useCallback((name, state = {}) => {
-    // keep shape consistent: either string or { name, ...state }
-    setPage(typeof name === 'string' ? name : { ...name, ...state });
-  }, []);
+  const register = (data) => {
+    console.log('Register', data);
+    setCurrentPage('login');
+  };
+  const logout = () => {
+    setUser(null);
+    setCurrentPage('login');
+  };
+  const navigate = page => setCurrentPage(page);
 
   return (
-    <AuthContext.Provider value={{ user, page, login, register, logout, navigate }}>
+    <AuthContext.Provider value={{
+      user, login, logout, register,
+      currentPage, navigate
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
+export const useAuth = () => useContext(AuthContext);

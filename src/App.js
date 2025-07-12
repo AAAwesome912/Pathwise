@@ -1,247 +1,323 @@
-
 // Main App Component: src/App.js
-import React, { useState, useContext, createContext } from 'react';
-import { ChevronDown, LogOut, User, Briefcase, Settings, LayoutDashboard, Ticket, Users, BookOpen, MapPin, PlusCircle, Edit3, Trash2, Search, Bell } from 'lucide-react';
-import { useAuth } from './contexts/AuthContext'
+import React, { useState, useContext, createContext, useEffect } from 'react';
+import { ChevronDown, LogOut, User, Briefcase, LayoutDashboard, Ticket, Users, BookOpen, MapPin, PlusCircle, Edit3, Trash2, Search, Bell } from 'lucide-react';
+import Logo from './components/logo'; 
 
-import API from './api';
-// Mock Auth Context
+
+
+// Auth Context
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // null, { email: 'student@example.com', role: 'student' }, { email: 'staff@example.com', role: 'staff' }, { email: 'admin@example.com', role: 'admin' }
-  const [currentPage, setCurrentPage] = useState(user ? (user.role === 'student' ? 'studentDashboard' : user.role === 'staff' ? 'staffDashboard' : 'adminDashboard') : 'login');
+  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('login');
+  const [pageNavigationProps, setPageNavigationProps] = useState({});
 
-  const login = (email, password, role) => {
-    // Mock login logic
-    if (email && password) {
-      const mockUser = { email, role };
-      setUser(mockUser);
-      // Navigate to default page based on role
-      switch (role) {
-        case 'student':
-          setCurrentPage('studentDashboard');
-          break;
-        case 'staff':
-          setCurrentPage('staffDashboard');
-          break;
-        case 'admin':
-          setCurrentPage('adminDashboard');
-          break;
-        default:
-          setCurrentPage('login');
+  const login = (credentials) => {
+    const { email, password, role, name, address, contact } = credentials;
+
+    if (role === 'visitor') {
+      if (name && address && contact) { 
+        const mockUser = { role: 'visitor', name, address, contact };
+        setUser(mockUser);
+        setPageNavigationProps({});
+        setCurrentPage('visitorDashboard');
+        return true;
       }
-      return true;
+      return false;
+    } else {
+      // Mock login logic for other roles
+      if (email && password) {
+        const mockUser = { email, role };
+        setUser(mockUser);
+        setPageNavigationProps({});
+        switch (role) {
+          case 'student':
+            setCurrentPage('studentDashboard');
+            break;
+          case 'staff':
+            setCurrentPage('staffDashboard');
+            break;
+          case 'admin':
+            setCurrentPage('adminDashboard');
+            break;
+          default:
+            setCurrentPage('login');
+        }
+        return true;
+      }
+      return false;
     }
-    return false;
   };
 
   const register = (userData) => {
-    // Mock registration logic
-    console.log('Registering user:', userData);
-    // For now, just log and redirect to login
-    setCurrentPage('login');
-  };
+     // Mock registration logic
+     console.log('Registering user:', userData);
+     // DO NOT navigate here directly. Let the calling component handle navigation.
+     // setPageNavigationProps({});
+     // setCurrentPage('login');
+   };
 
   const logout = () => {
     setUser(null);
+    setPageNavigationProps({});
     setCurrentPage('login');
   };
 
-  const navigate = (page) => {
+  const navigate = (page, props = {}) => {
+    setPageNavigationProps(props);
     setCurrentPage(page);
   };
 
+  // Effect to handle initial page load if user is already set
+ useEffect(() => {
+    if (user && currentPage === 'login') {
+      switch (user.role) {
+        case 'student': setCurrentPage('studentDashboard'); break;
+        case 'visitor': setCurrentPage('visitorDashboard'); break;
+        case 'staff': setCurrentPage('staffDashboard'); break;
+        case 'admin': setCurrentPage('adminDashboard'); break;
+        default: setCurrentPage('login');
+      }
+    } else if (!user && currentPage !== 'login' && currentPage !== 'register') {
+      setCurrentPage('login');
+    }
+  }, [user, currentPage]);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, currentPage, navigate }}>
+    <AuthContext.Provider value={{ user, login, logout, register, currentPage, navigate, pageNavigationProps }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
+export const useAuth = () => useContext(AuthContext);
 
 // Common Components
-const Navbar = () => {
-  const { user, logout, navigate, currentPage } = useAuth();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  if (!user) return null;
-
-  const commonLinks = [
-    { name: 'My Profile', page: 'profile', icon: <User className="w-4 h-4 mr-2" /> },
-  ];
-
-  const studentLinks = [
-    { name: 'Dashboard', page: 'studentDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
-    { name: 'Find Service', page: 'serviceList', icon: <Search className="w-4 h-4 mr-2" /> },
-    { name: 'My Tickets', page: 'myTickets', icon: <Ticket className="w-4 h-4 mr-2" /> },
-  ];
-
-  const staffLinks = [
-    { name: 'Dashboard', page: 'staffDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
-    { name: 'Manage Queue', page: 'queueManagement', icon: <Users className="w-4 h-4 mr-2" /> },
-  ];
-
-  const adminLinks = [
-    { name: 'Dashboard', page: 'adminDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
-    { name: 'Manage Users', page: 'userManagement', icon: <Users className="w-4 h-4 mr-2" /> },
-    { name: 'Manage Services', page: 'serviceManagement', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-    { name: 'Manage Offices', page: 'officeManagement', icon: <MapPin className="w-4 h-4 mr-2" /> },
-  ];
-
-  let navLinks = [];
-  if (user.role === 'student') navLinks = studentLinks;
-  else if (user.role === 'staff') navLinks = staffLinks;
-  else if (user.role === 'admin') navLinks = adminLinks;
-
-  return (
-    <nav className="bg-blue-600 text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <button onClick={() => navigate(user.role === 'student' ? 'studentDashboard' : user.role === 'staff' ? 'staffDashboard' : 'adminDashboard')} className="font-bold text-xl hover:text-blue-200 transition duration-150">
-              SchoolQ PWA
-            </button>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                {navLinks.map((link) => (
-                  <button
-                    key={link.name}
-                    onClick={() => navigate(link.page)}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition duration-150 ${
-                      currentPage === link.page ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-blue-500 hover:text-white'
-                    }`}
-                  >
-                    {link.icon} {link.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6">
-              <button className="p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
-                <span className="sr-only">View notifications</span>
-                <Bell className="h-6 w-6" aria-hidden="true" />
-              </button>
-              <div className="ml-3 relative">
-                <div>
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="max-w-xs bg-blue-700 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white"
-                    id="user-menu-button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                  >
-                    <span className="sr-only">Open user menu</span>
-                    {/* Placeholder for user avatar - could be initials or an image */}
-                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-500">
-                      <span className="text-sm font-medium leading-none text-white">{user.email ? user.email.substring(0,1).toUpperCase() : 'U'}</span>
-                    </span>
-                    <ChevronDown className="ml-1 h-5 w-5 text-blue-300" />
-                  </button>
-                </div>
-                {dropdownOpen && (
-                  <div
-                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="user-menu-button"
-                  >
-                    {commonLinks.map(link => (
+ const Navbar = () => {
+   const { user, logout, navigate, currentPage } = useAuth();
+   const [dropdownOpen, setDropdownOpen] = useState(false);
+   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+   const [showLogoutModal, setShowLogoutModal] = useState(false); // New state for modal
+ 
+   if (!user) return null;
+ 
+   const commonDropdownLinks = [
+     { name: 'My Profile', page: 'profile', icon: <User className="w-4 h-4 mr-2" /> },
+   ];
+ 
+   const studentOrVisitorLinks = [
+     { name: 'Dashboard', page: user.role === 'student' ? 'studentDashboard' : 'visitorDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
+     { name: 'Find Service', page: 'serviceList', icon: <Search className="w-4 h-4 mr-2" /> },
+     { name: 'My Tickets', page: 'myTickets', icon: <Ticket className="w-4 h-4 mr-2" /> },
+   ];
+ 
+   const staffLinks = [
+     { name: 'Dashboard', page: 'staffDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
+     { name: 'Manage Queue', page: 'queueManagement', icon: <Users className="w-4 h-4 mr-2" /> },
+   ];
+ 
+   const adminLinks = [
+     { name: 'Dashboard', page: 'adminDashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
+     { name: 'Manage Users', page: 'userManagement', icon: <Users className="w-4 h-4 mr-2" /> },
+     { name: 'Manage Services', page: 'serviceManagement', icon: <BookOpen className="w-4 h-4 mr-2" /> },
+     { name: 'Manage Offices', page: 'officeManagement', icon: <MapPin className="w-4 h-4 mr-2" /> },
+   ];
+ 
+   let navLinks = [];
+   let homePage = 'login';
+ 
+   if (user.role === 'student' || user.role === 'visitor') {
+     navLinks = studentOrVisitorLinks;
+     homePage = user.role === 'student' ? 'studentDashboard' : 'visitorDashboard';
+   } else if (user.role === 'staff') {
+     navLinks = staffLinks;
+     homePage = 'staffDashboard';
+   } else if (user.role === 'admin') {
+     navLinks = adminLinks;
+     homePage = 'adminDashboard';
+   }
+ 
+   const handleLogoutClick = () => {
+     setShowLogoutModal(true); // Open the modal
+     setDropdownOpen(false); // Close dropdown if open
+     setMobileMenuOpen(false); // Close mobile menu if open
+   };
+ 
+   const confirmLogout = () => {
+     logout(); // Perform the actual logout
+     setShowLogoutModal(false); // Close the modal
+   };
+ 
+   const cancelLogout = () => {
+     setShowLogoutModal(false); // Close the modal
+   };
+ 
+   return (
+     <nav className="bg-blue-600 text-white shadow-lg">
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="flex items-center justify-between h-16">
+           <div className="flex items-center">
+             <button onClick={() => navigate(homePage)} className="font-bold text-xl hover:text-blue-200 transition duration-150">
+               PathWise
+             </button>
+             <div className="hidden md:block">
+               <div className="ml-10 flex items-baseline space-x-4">
+                 {navLinks.map((link) => (
+                   <button
+                     key={link.name}
+                     onClick={() => navigate(link.page)}
+                     className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition duration-150 ${
+                       currentPage === link.page ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-blue-500 hover:text-white'
+                     }`}
+                   >
+                     {link.icon} {link.name}
+                   </button>
+                 ))}
+               </div>
+             </div>
+           </div>
+           <div className="hidden md:block">
+             <div className="ml-4 flex items-center md:ml-6">
+               <button className="p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
+                 <span className="sr-only">View notifications</span>
+                 <Bell className="h-6 w-6" aria-hidden="true" />
+               </button>
+               <div className="ml-3 relative">
+                 <div>
+                   <button
+                     onClick={() => setDropdownOpen(!dropdownOpen)}
+                     className="max-w-xs bg-blue-700 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white"
+                     id="user-menu-button" aria-expanded={dropdownOpen} aria-haspopup="true"
+                   >
+                     <span className="sr-only">Open user menu</span>
+                     <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-500">
+                       <span className="text-sm font-medium leading-none text-white">{user.email ? user.email.substring(0, 1).toUpperCase() : user.name ? user.name.substring(0, 1).toUpperCase() : 'U'}</span>
+                     </span>
+                     <ChevronDown className="ml-1 h-5 w-5 text-blue-300" />
+                   </button>
+                 </div>
+                 {dropdownOpen && (
+                   <div
+                     className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                     role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button"
+                   >
+                     {commonDropdownLinks.map(link => (
                        <button
-                        key={link.page}
-                        onClick={() => { navigate(link.page); setDropdownOpen(false); }}
-                        className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        {link.icon} {link.name}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => { logout(); setDropdownOpen(false); }}
-                      className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" /> Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="-mr-2 flex md:hidden"> {/* Mobile menu button */}
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)} // Re-use dropdownOpen for mobile menu for simplicity
-              type="button"
-              className="bg-blue-700 inline-flex items-center justify-center p-2 rounded-md text-blue-200 hover:text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white"
-              aria-controls="mobile-menu"
-              aria-expanded={dropdownOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              {dropdownOpen ? <Users className="block h-6 w-6" /> : <User className="block h-6 w-6" /> /* Simple icon toggle */}
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Mobile menu, show/hide based on menu state. */}
-      {dropdownOpen && (
-        <div className="md:hidden" id="mobile-menu">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map((link) => (
-              <button
-                key={link.name}
-                onClick={() => { navigate(link.page); setDropdownOpen(false); }}
-                className={`w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium transition duration-150 ${
-                  currentPage === link.page ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-blue-500 hover:text-white'
-                }`}
-              >
-                {link.icon} {link.name}
-              </button>
-            ))}
-          </div>
-          <div className="pt-4 pb-3 border-t border-blue-700">
-            <div className="flex items-center px-5">
-                <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-blue-500">
-                  <span className="text-md font-medium leading-none text-white">{user.email ? user.email.substring(0,1).toUpperCase() : 'U'}</span>
-                </span>
-              <div className="ml-3">
-                <div className="text-base font-medium leading-none text-white">{user.email}</div>
-                <div className="text-sm font-medium leading-none text-blue-300">{user.role}</div>
-              </div>
-              <button className="ml-auto bg-blue-700 flex-shrink-0 p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
-                <span className="sr-only">View notifications</span>
-                <Bell className="h-6 w-6" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="mt-3 px-2 space-y-1">
-                {commonLinks.map(link => (
-                    <button
-                    key={link.page}
-                    onClick={() => { navigate(link.page); setDropdownOpen(false); }}
-                    className="w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium text-blue-100 hover:text-white hover:bg-blue-500"
-                    role="menuitem"
-                    >
-                    {link.icon} {link.name}
-                    </button>
-                ))}
-              <button
-                onClick={() => { logout(); setDropdownOpen(false); }}
-                className="w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium text-blue-100 hover:text-white hover:bg-blue-500"
-              >
-                <LogOut className="w-5 h-5 mr-2" /> Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-};
+                         key={link.page}
+                         onClick={() => { navigate(link.page); setDropdownOpen(false); }}
+                         className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                         role="menuitem"
+                       >
+                         {link.icon} {link.name}
+                       </button>
+                     ))}
+                     <button
+                       onClick={handleLogoutClick} // Call handleLogoutClick here
+                       className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                       role="menuitem"
+                     >
+                       <LogOut className="w-4 h-4 mr-2" /> Logout
+                     </button>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </div>
+           <div className="-mr-2 flex md:hidden">
+             <button
+               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+               type="button"
+               className="bg-blue-700 inline-flex items-center justify-center p-2 rounded-md text-blue-200 hover:text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white"
+               aria-controls="mobile-menu" aria-expanded={mobileMenuOpen}
+             >
+               <span className="sr-only">Open main menu</span>
+               {mobileMenuOpen ? <Users className="block h-6 w-6" /> : <User className="block h-6 w-6" /> /* Icon can be <Menu /> and <X /> from lucide if preferred */}
+             </button>
+           </div>
+         </div>
+       </div>
+       {mobileMenuOpen && (
+         <div className="md:hidden" id="mobile-menu">
+           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+             {navLinks.map((link) => (
+               <button
+                 key={link.name}
+                 onClick={() => { navigate(link.page); setMobileMenuOpen(false); }}
+                 className={`w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium transition duration-150 ${
+                   currentPage === link.page ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-blue-500 hover:text-white'
+                 }`}
+               >
+                 {link.icon} {link.name}
+               </button>
+             ))}
+           </div>
+           <div className="pt-4 pb-3 border-t border-blue-700">
+             <div className="flex items-center px-5">
+               <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-blue-500">
+                 <span className="text-md font-medium leading-none text-white">{user.email ? user.email.substring(0, 1).toUpperCase() : user.name ? user.name.substring(0, 1).toUpperCase() : 'U'}</span>
+               </span>
+               <div className="ml-3">
+                 <div className="text-base font-medium leading-none text-white">{user.email || user.name}</div>
+                 <div className="text-sm font-medium leading-none text-blue-300 capitalize">{user.role}</div>
+               </div>
+               <button className="ml-auto bg-blue-700 flex-shrink-0 p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
+                 <span className="sr-only">View notifications</span>
+                 <Bell className="h-6 w-6" aria-hidden="true" />
+               </button>
+             </div>
+             <div className="mt-3 px-2 space-y-1">
+               {commonDropdownLinks.map(link => (
+                 <button
+                   key={link.page}
+                   onClick={() => { navigate(link.page); setMobileMenuOpen(false); }}
+                   className="w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium text-blue-100 hover:text-white hover:bg-blue-500"
+                   role="menuitem"
+                 >
+                   {link.icon} {link.name}
+                 </button>
+               ))}
+               <button
+                 onClick={handleLogoutClick} // Call handleLogoutClick here
+                 className="w-full text-left flex items-center px-3 py-2 rounded-md text-base font-medium text-blue-100 hover:text-white hover:bg-blue-500"
+               >
+                 <LogOut className="w-5 h-5 mr-2" /> Logout
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+ 
+       {/* Logout Confirmation Modal */}
+       {showLogoutModal && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+           <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+             <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Logout</h3>
+             <p className="text-sm text-gray-700 mb-6">Are you sure you want to log out?</p>
+             <div className="flex justify-end space-x-3">
+               <button
+                 onClick={cancelLogout}
+                 className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+               >
+                 Cancel
+               </button>
+               <button
+                 onClick={confirmLogout}
+                 className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+               >
+                 Confirm
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+     </nav>
+   );
+ };
 
 const Footer = () => (
   <footer className="bg-gray-100 text-center p-4 mt-auto text-sm text-gray-600 border-t">
-    &copy; {new Date().getFullYear()} School Queuing System. All rights reserved.
+    &copy; {new Date().getFullYear()} PathWise Queuing and Navigation. All rights reserved.
   </footer>
 );
 
@@ -255,66 +331,115 @@ const Layout = ({ children }) => (
   </div>
 );
 
+
 // Auth Pages
 const LoginPage = () => {
   const { login, navigate } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('student'); // Default role for login attempt
+  const [role, setRole] = useState('student'); // Default role
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [contact, setContact] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-    // In a real app, you'd call an API. Here we use mock login.
-    // The role selected here is just to tell the mock login function what kind of user is trying to log in.
-    // The backend would typically determine the role based on credentials.
-    if (!login(email, password, role)) {
-      setError('Invalid credentials or role mismatch. Please try again.');
+
+    const credentials = { role };
+    if (role === 'visitor') {
+      credentials.name = name;
+      credentials.address = address;
+      credentials.contact = contact;
+      if (!name || !address || !contact) {
+        setError('Please provide your name, address, and contact information.');
+        return;
+      }
+    } else {
+      credentials.email = email;
+      credentials.password = password;
+      if (!email || !password) {
+        setError('Please provide your email and password.');
+        return;
+      }
+    }
+
+    if (!login(credentials)) {
+      setError('Login failed. Please check your information or role.');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
+        <div className="text-center">
+          {/* Use the Logo component */}
+          <Logo />
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Sign in to PathWise</h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email-address" className="sr-only">Email address</label>
-              <input id="email-address" name="email" type="email" autoComplete="email" required
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input id="password" name="password" type="password" autoComplete="current-password" required
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <div>
               <label htmlFor="role" className="sr-only">Role</label>
               <select id="role" name="role" required value={role} onChange={(e) => setRole(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
               >
                 <option value="student">Student</option>
+                <option value="visitor">Visitor</option>
                 <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
+            {role === 'visitor' && (
+              <>
+                <div>
+                  <label htmlFor="name" className="sr-only">Full Name</label>
+                  <input id="name" name="name" type="text" required
+                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="address" className="sr-only">Address</label>
+                  <input id="address" name="address" type="text" required
+                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="contact" className="sr-only">Email or Contact Number</label>
+                  <input id="contact" name="contact" type="text" required
+                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Email or Contact Number" value={contact} onChange={(e) => setContact(e.target.value)} />
+                </div>
+              </>
+            )}
+            {role !== 'visitor' && (
+              <>
+                <div>
+                  <label htmlFor="email-address" className="sr-only">Email address</label>
+                  <input id="email-address" name="email" type="email" autoComplete="email" required
+                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="password" className="sr-only">Password</label>
+                  <input id="password" name="password" type="password" autoComplete="current-password" required
+                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <button onClick={() => navigate('register')} type="button" className="font-medium text-blue-600 hover:text-blue-500">
-                Don't have an account? Register
-              </button>
-            </div>
+            {role !== 'visitor' && (
+              <div className="text-sm">
+                <button onClick={() => navigate('register')} type="button" className="font-medium text-blue-600 hover:text-blue-500">
+                  Don't have an account? Register
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -329,115 +454,175 @@ const LoginPage = () => {
   );
 };
 
-const RegisterPage = () => {
-  const { register, navigate } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: ''
-  });
-  const [error, setError] = useState('');
+ 
+ const RegisterPage = () => {
+   const { register, navigate } = useAuth();
+   const [formData, setFormData] = useState({
+     name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: ''
+   });
+   const [error, setError] = useState('');
+   const [showSuccessModal, setShowSuccessModal] = useState(false);
+ 
+   const handleChange = (e) => {
+     setFormData({ ...formData, [e.target.name]: e.target.value });
+   };
+ 
+   const handleSubmit = (e) => {
+     e.preventDefault();
+     setError('');
+     setShowSuccessModal(false); // Reset modal state on new submission
+ 
+     // --- Validation Logic ---
+     if (formData.password !== formData.confirmPassword) {
+       setError("Passwords do not match.");
+       return;
+     }
+     if (!formData.name) {
+       setError("Name is required.");
+       return;
+     }
+     if (!formData.email) {
+       setError("Email is required.");
+       return;
+     }
+     if (formData.role === 'student' && !formData.studentId) {
+       setError("Student ID is required for student registration.");
+       return;
+     }
+     if (formData.role === 'staff' && !formData.staffId) {
+       setError("Staff ID is required for staff registration.");
+       return;
+     }
+     // --- End Validation Logic ---
+ 
+     // Simulate successful registration
+     register(formData); // Mock register function from AuthContext
+     setShowSuccessModal(true); // Show the success modal
+     
+     // Optionally reset form fields after successful registration
+     setFormData({
+       name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: ''
+     });
+   };
+ 
+   const handleCloseSuccessModal = () => {
+     setShowSuccessModal(false);
+     navigate('login'); // Navigate to login page when modal is closed via the button
+   };
+ 
+   return (
+     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-teal-500 py-12 px-4 sm:px-6 lg:px-8">
+       <div className="max-w-lg w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
+         <div>
+           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Student/Staff Registration</h2>
+         </div>
+ 
+         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+           {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
+           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+             <div className="sm:col-span-2">
+               <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+               <input type="text" name="name" id="name" required onChange={handleChange} value={formData.name}
+                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+             </div>
+             <div className="sm:col-span-2">
+               <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
+               <input type="email" name="email" id="email" autoComplete="email" required onChange={handleChange} value={formData.email}
+                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+             </div>
+             <div>
+               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+               <input type="password" name="password" id="password" required onChange={handleChange} value={formData.password}
+                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+             </div>
+             <div>
+               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+               <input type="password" name="confirmPassword" id="confirmPassword" required onChange={handleChange} value={formData.confirmPassword}
+                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+             </div>
+             <div className="sm:col-span-2">
+               <label htmlFor="role" className="block text-sm font-medium text-gray-700">Register as</label>
+               <select id="role" name="role" value={formData.role} onChange={handleChange} required
+                 className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                 <option value="student">Student</option>
+                 <option value="staff">Staff</option>
+               </select>
+             </div>
+             {formData.role === 'student' && (
+               <div className="sm:col-span-2">
+                 <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID</label>
+                 <input type="text" name="studentId" id="studentId" required={formData.role === 'student'} onChange={handleChange} value={formData.studentId}
+                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+               </div>
+             )}
+             {formData.role === 'staff' && (
+               <div className="sm:col-span-2">
+                 <label htmlFor="staffId" className="block text-sm font-medium text-gray-700">Staff ID</label>
+                 <input type="text" name="staffId" id="staffId" required={formData.role === 'staff'} onChange={handleChange} value={formData.staffId}
+                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+               </div>
+             )}
+           </div>
+           <div className="flex items-center justify-between mt-6">
+             <div className="text-sm">
+               <button onClick={() => navigate('login')} type="button" className="font-medium text-teal-600 hover:text-teal-500">
+                 Already have an account? Sign in
+               </button>
+             </div>
+           </div>
+           <div>
+             <button type="submit"
+               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150">
+               Register
+             </button>
+           </div>
+         </form>
+       </div>
+ 
+       {/* Registration Success Modal */}
+       {showSuccessModal && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+           <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
+             <h3 className="text-2xl font-bold text-green-600 mb-4">Registration Successful!</h3>
+             <p className="text-gray-700 mb-6">Your account has been created successfully.</p>
+             <button
+               onClick={handleCloseSuccessModal}
+               className="px-6 py-3 rounded-md text-base font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150"
+             >
+               Back to Sign In
+             </button>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ };
+ 
+ 
+ 
+ 
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    // Add more validation as needed
-    register(formData); // Mock register
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-teal-500 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create a new account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
-          
-          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input type="text" name="name" id="name" required onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-              <input type="email" name="email" id="email" autoComplete="email" required onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <input type="password" name="password" id="password" required onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
-              <input type="password" name="confirmPassword" id="confirmPassword" required onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">Register as</label>
-              <select id="role" name="role" value={formData.role} onChange={handleChange} required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
-                <option value="student">Student</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
-
-            {formData.role === 'student' && (
-              <div className="sm:col-span-2">
-                <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID</label>
-                <input type="text" name="studentId" id="studentId" onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-              </div>
-            )}
-            {formData.role === 'staff' && (
-              <div className="sm:col-span-2">
-                <label htmlFor="staffId" className="block text-sm font-medium text-gray-700">Staff ID</label>
-                <input type="text" name="staffId" id="staffId" onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between mt-6">
-            <div className="text-sm">
-              <button onClick={() => navigate('login')} type="button" className="font-medium text-teal-600 hover:text-teal-500">
-                Already have an account? Sign in
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <button type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150">
-              Register
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 // Placeholder Page Components
-const StudentDashboard = () => {
+// Unified/Shared Page Components
+const Dashboard = () => {
   const { user, navigate } = useAuth();
+
+  let dashboardTitle = "User Dashboard";
+  if (user?.role === 'student') {
+    dashboardTitle = "Student Dashboard";
+  } else if (user?.role === 'visitor') {
+    dashboardTitle = "Visitor Dashboard";
+  }
+  // For Staff/Admin, they would typically have their own specific dashboard components
+  // loaded via 'staffDashboard' or 'adminDashboard' routes.
+
+  const welcomeMessage = `Welcome, ${user?.email || 'User'}! This is your starting point.`;
+
   return (
     <div className="bg-white p-8 rounded-xl shadow-xl">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Student Dashboard</h1>
-      <p className="text-gray-600 mb-4">Welcome, {user?.email}! This is your starting point.</p>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">{dashboardTitle}</h1>
+      <p className="text-gray-600 mb-4">{welcomeMessage}</p>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <button onClick={() => navigate('serviceList')} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center">
           <Search size={48} className="mb-2" />
@@ -449,57 +634,63 @@ const StudentDashboard = () => {
           <span className="text-xl">My Tickets</span>
           <span className="text-sm opacity-80">Check your queue status</span>
         </button>
-         <button onClick={() => navigate('profile')} className="bg-purple-500 hover:bg-purple-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center">
+        <button onClick={() => navigate('profile')} className="bg-purple-500 hover:bg-purple-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center">
           <User size={48} className="mb-2" />
           <span className="text-xl">My Profile</span>
           <span className="text-sm opacity-80">View and update your details</span>
+        </button>
+        <button onClick={() => navigate('campus-map')} className="bg-pink-500 hover:bg-pink-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center">
+          <User size={48} className="mb-2" />
+          <span className="text-xl">Campus Map</span>
+          <span className="text-sm opacity-80">Navigate your way around campus</span>
         </button>
       </div>
     </div>
   );
 };
 
+
+
 const ServiceListPage = () => {
-  const { navigate } = useAuth();
-  const [services, setServices] = useState([]);
+    const { navigate } = useAuth();
+    // Mock services data
+    const services = [
+        { id: 1, name: "Borrow Books", office: "Library", description: "Borrow books for your studies.", icon: <BookOpen size={24} className="text-indigo-500" /> },
+        { id: 2, name: "Transcript Request", office: "Registrar", description: "Request your official transcript of records.", icon: <Briefcase size={24} className="text-teal-500" /> },
+        { id: 3, name: "ID Application/Renewal", office: "Student Affairs", description: "Apply for a new ID or renew your existing one.", icon: <User size={24} className="text-sky-500" /> },
+        { id: 4, name: "Clearance Signing", office: "Various Offices", description: "Get your clearance form signed by relevant departments.", icon: <Edit3 size={24} className="text-amber-500" /> },
+    ];
 
-  // eslint-disable-next-line no-undef
-  useEffect(() => {
-    API.get('/services')
-      .then(res => setServices(res.data))
-      .catch(err => console.error('Failed to fetch services', err));
-  }, []);
-
-  return (
-    <div className="bg-white p-8 rounded-xl shadow-xl">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Available Services</h1>
-      <p className="text-gray-600 mb-6">Choose a service you need assistance with.</p>
-      <div className="grid md:grid-cols-2 gap-6">
-        {services.map(service => (
-          <div key={service.id} className="bg-gray-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-150">
-            <div className="flex items-center mb-3">
-              <div className="p-3 rounded-full bg-gray-200 mr-4">
-                <BookOpen size={24} className="text-indigo-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-gray-700">{service.name}</h2>
-                <p className="text-sm text-gray-500">Office: {service.office}</p>
-              </div>
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-xl">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Available Services</h1>
+            <p className="text-gray-600 mb-6">Choose a service you need assistance with.</p>
+            <div className="grid md:grid-cols-2 gap-6">
+                {services.map(service => (
+                    <div key={service.id} className="bg-gray-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-150">
+                        <div className="flex items-center mb-3">
+                            <div className="p-3 rounded-full bg-gray-200 mr-4">{service.icon}</div>
+                            <div>
+                                <h2 className="text-xl font-semibold text-gray-700">{service.name}</h2>
+                                <p className="text-sm text-gray-500">Office: {service.office}</p>
+                            </div>
+                        </div>
+                        <p className="text-gray-600 mb-4 text-sm">{service.description}</p>
+                        <button 
+                            onClick={() => navigate('requestService', { serviceId: service.id, serviceName: service.name })} 
+                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition duration-150"
+                        >
+                            Request Service
+                        </button>   
+                    </div>
+                ))}
             </div>
-            <p className="text-gray-600 mb-4 text-sm">{service.description}</p>
-            <button
-              onClick={() => navigate('requestService', { serviceId: service.id, serviceName: service.name })}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition duration-150"
-            >
-              Request Service
+               <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
             </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
-
 
 const RequestServicePage = ({ serviceId, serviceName }) => { // Props would be passed via navigate state
     const { navigate } = useAuth();
@@ -573,54 +764,131 @@ const RequestServicePage = ({ serviceId, serviceName }) => { // Props would be p
     );
 };
 
-const MyTicketsPage = ({ ticketNumber, serviceName, office }) => { // Props from navigation state
-    // Mock ticket data - in real app, fetch this
-    const tickets = [
-        { id: 'LIB-001', service: 'Borrow Books', office: 'Library - 2nd Floor', status: 'Waiting (Est. 15 mins)', position: 3, navDetails: "Go to Main Library, 2nd Floor, Section A." },
-        { id: 'REG-005', service: 'Transcript Request', office: 'Registrar - Admin Bldg.', status: 'Called (Proceed to Counter 2)', position: 0, navDetails: "Admin Building, Ground Floor, Registrar's Office, Counter 2." },
-    ];
-    if (ticketNumber && serviceName && office && !tickets.find(t => t.id === ticketNumber)) {
-        tickets.unshift({id: ticketNumber, service: serviceName, office: office, status: 'Just Submitted (Processing...)', position: 'N/A', navDetails: `Please proceed to ${office}. Ask staff for directions if needed.`})
+const MyTicketsPage = ({ newlyCreatedTicket }) => {
+  const { navigate } = useAuth();
+  const [tickets, setTickets] = useState([
+    { id: 'REG-005', service: 'Transcript Request', office: 'Registrar - Quadrangle Bldg.', status: 'Called (Proceed to Counter 2)', position: 0, navDetails: "Quadrangle Building, Ground Floor, Registrar's Office, Counter 2." },
+    { id: 'LIB-001', service: 'Borrow Books', office: 'Library - 2nd Floor', status: 'Waiting (Est. 15 mins)', position: 3, navDetails: "Go to Main Library, 2nd Floor, Section A." },
+  ]);
+
+  useEffect(() => {
+    if (newlyCreatedTicket && !tickets.find(t => t.id === newlyCreatedTicket.id)) {
+      setTickets(prevTickets => [newlyCreatedTicket, ...prevTickets]);
     }
+    // In a real app, you would fetch tickets for the user from a backend.
+    // This effect is just to add a newly submitted mock ticket to the top of the list.
+  }, [newlyCreatedTicket, tickets]);
 
 
-    return (
-        <div className="bg-white p-8 rounded-xl shadow-xl">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">My Active Tickets</h1>
-            {tickets.length === 0 ? (
-                <p className="text-gray-600">You have no active tickets.</p>
-            ) : (
-                <div className="space-y-6">
-                    {tickets.map(ticket => (
-                        <div key={ticket.id} className="bg-gray-50 p-6 rounded-lg shadow-md">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h2 className="text-xl font-semibold text-blue-600">{ticket.service}</h2>
-                                    <p className="text-sm text-gray-500">Ticket #: <span className="font-medium">{ticket.id}</span></p>
-                                    <p className="text-sm text-gray-500">Office: <span className="font-medium">{ticket.office}</span></p>
-                                </div>
-                                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                                    ticket.status.includes('Waiting') ? 'bg-yellow-100 text-yellow-800' : 
-                                    ticket.status.includes('Called') || ticket.status.includes('Serving') ? 'bg-green-100 text-green-800' :
-                                    'bg-blue-100 text-blue-800'
-                                }`}>
-                                    {ticket.status}
-                                </span>
-                            </div>
-                            {ticket.position > 0 && <p className="mt-2 text-sm text-gray-600">Your position in queue: <span className="font-bold">{ticket.position}</span></p>}
-                             <div className="mt-4 pt-4 border-t border-gray-200">
-                                <h3 className="text-md font-semibold text-gray-700 mb-1">Navigation:</h3>
-                                <p className="text-sm text-gray-600 flex items-start">
-                                    <MapPin size={18} className="mr-2 mt-0.5 text-blue-500 flex-shrink-0" /> 
-                                    {ticket.navDetails}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-xl">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">My Active Tickets</h1>
+      {tickets.length === 0 ? (
+        <p className="text-gray-600">You have no active tickets. Go to "Find a Service" to create one.</p>
+      ) : (
+        <div className="space-y-6">
+          {tickets.map(ticket => (
+            <div key={ticket.id} className="bg-gray-50 p-6 rounded-lg shadow-md">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-semibold text-blue-600">{ticket.service}</h2>
+                  <p className="text-sm text-gray-500">Ticket #: <span className="font-medium">{ticket.id}</span></p>
+                  <p className="text-sm text-gray-500">Office: <span className="font-medium">{ticket.office}</span></p>
                 </div>
-            )}
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                  ticket.status.includes('Waiting') ? 'bg-yellow-100 text-yellow-800' :
+                  ticket.status.includes('Called') || ticket.status.includes('Serving') ? 'bg-green-100 text-green-800' :
+                  ticket.status.includes('Submitted') ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800' // Default/Completed
+                }`}>
+                  {ticket.status}
+                </span>
+              </div>
+              {ticket.position > 0 && <p className="mt-2 text-sm text-gray-600">Your position in queue: <span className="font-bold">{ticket.position}</span></p>}
+              {ticket.position === 'N/A' && ticket.status.includes('Submitted') && <p className="mt-2 text-sm text-gray-600">Your request is being processed.</p>}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="text-md font-semibold text-gray-700 mb-1">Navigation:</h3>
+                <p className="text-sm text-gray-600 flex items-start">
+                  <MapPin size={18} className="mr-2 mt-0.5 text-blue-500 flex-shrink-0" />
+                  {ticket.navDetails}
+                </p>
+                  <button onClick={() => navigate('campus-map')} className="mt-7 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md transition duration-100">
+                   Use Campus Map
+                  </button>
+              </div>
+            </div>
+          ))}
         </div>
-    );
+      )}
+        <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
+            </button>
+    </div>
+  );
+};
+
+const CampusMapPage = () => {
+  const { navigate } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    // Implement your search logic here using the searchQuery
+    console.log('Searching for:', searchQuery);
+    // You might want to navigate to a search results page or update the map
+    // based on the search query.
+  };
+
+  const handleMakeRequest = () => {
+    navigate('requestService'); // Or navigate to the specific request service page
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-xl">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Campus Map</h1>
+
+      <div className="flex items-center mb-4">
+        <input
+          type="text"
+          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3"
+          placeholder="Search for a building or location"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <button
+          onClick={handleSearch}
+          className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150"
+        >
+          Search
+        </button>
+      </div>
+
+      {/* Display the image without the link */}
+      <img
+        src="/asuMap.png"
+        alt="school-q-pwa/src/asuMap.png"
+        className="w-full rounded-md shadow-md"
+        style={{ maxHeight: '390px', height: 'auto' }}
+      />
+      <p className="text-gray-600 mt-4 text-sm">
+        Explore the campus using the map above. Use the search bar to find specific locations.
+      </p>
+      {/* You could add interactive map elements here using a library like Leaflet or Google Maps API */}
+      <div className="mt-8 flex justify-between">
+        <button
+          onClick={() => navigate('Dashboard')}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+        >
+          Back to Dashboard
+        </button>
+        <button
+          onClick={handleMakeRequest}
+          className="bg-green-500 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150"
+        >
+          Make a Request
+        </button>
+      </div>
+    </div>
+  );
 };
 
 
@@ -752,6 +1020,7 @@ const AdminDashboard = () => {
 };
 
 const UserManagementPage = () => {
+  const {navigate} = useAuth();
     // Mock data
     const users = [
         { id: 'S001', name: 'Alice Student', email: 'alice@example.com', role: 'student', status: 'Active' },
@@ -797,11 +1066,15 @@ const UserManagementPage = () => {
                     </tbody>
                 </table>
             </div>
+            <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
+            </button>
         </div>
     );
 };
 
 const ServiceManagementPage = () => {
+  const {navigate } = useAuth();
     const services = [
         { id: 1, name: "Borrow Books", office: "Library", formFields: 2, isActive: true },
         { id: 2, name: "Transcript Request", office: "Registrar", formFields: 3, isActive: true },
@@ -842,10 +1115,14 @@ const ServiceManagementPage = () => {
                     </tbody>
                 </table>
             </div>
+            <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
+            </button>
         </div>
     );
 };
 const OfficeManagementPage = () => {
+  const { navigate } = useAuth();
     const offices = [
         { id: 1, name: "Main Library", building: "Academic Hall", floor: "2nd", navDetails: "Section A, near the study area." },
         { id: 2, name: "Registrar's Office", building: "Admin Building", floor: "Ground", navDetails: "Window 3 & 4." },
@@ -884,122 +1161,110 @@ const OfficeManagementPage = () => {
                     </tbody>
                 </table>
             </div>
-        </div>
-    );
-};
-
-const ProfilePage = () => {
-    const { user } = useAuth();
-    // Mock user data, in real app fetch this
-    const userDetails = {
-        name: user?.role === 'student' ? "Alice Student" : user?.role === 'staff' ? "Bob Staff" : "Admin User",
-        idNumber: user?.role === 'student' ? "S1001" : user?.role === 'staff' ? "T001" : "ADM01",
-        department: user?.role === 'student' ? "Computer Science" : user?.role === 'staff' ? "Library Department" : "System Administration",
-        contact: "09123456789"
-    };
-
-    return (
-        <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">My Profile</h1>
-            <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-500">Full Name</label>
-                    <p className="text-lg text-gray-800">{userDetails.name}</p>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-500">Email</label>
-                    <p className="text-lg text-gray-800">{user?.email}</p>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-500">{user?.role === 'student' ? 'Student ID' : user?.role === 'staff' ? 'Staff ID' : 'Admin ID'}</label>
-                    <p className="text-lg text-gray-800">{userDetails.idNumber}</p>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-500">{user?.role === 'student' ? 'Department/Course' : user?.role === 'staff' ? 'Assigned Department' : 'Role Description'}</label>
-                    <p className="text-lg text-gray-800">{userDetails.department}</p>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-500">Contact Number</label>
-                    <p className="text-lg text-gray-800">{userDetails.contact}</p>
-                </div>
-            </div>
-            <button className="mt-8 w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center transition duration-150">
-                <Edit3 size={18} className="mr-2" /> Edit Profile (Not Implemented)
+             <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
             </button>
         </div>
     );
 };
 
+const ProfilePage = () => {
+  const { user,navigate } = useAuth();
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-xl max-w-md mx-auto">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">My Profile</h1>
+      <div className="space-y-4">
+        <div className="flex items-center justify-center mb-6">
+            <span className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-blue-500 ring-4 ring-blue-200">
+                <span className="text-4xl font-medium leading-none text-white">{user?.email ? user.email.substring(0,1).toUpperCase() : 'U'}</span>
+            </span>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Email Address:</label>
+          <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md">{user?.email || 'N/A'}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Role:</label>
+          <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md capitalize">{user?.role || 'N/A'}</p>
+        </div>
+        {user?.role === 'student' && user?.studentId && ( // Assuming studentId might be stored in user object after login/registration
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Student ID:</label>
+            <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md">{user.studentId}</p>
+          </div>
+        )}
+         {user?.role === 'staff' && user?.staffId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Staff ID:</label>
+            <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md">{user.staffId}</p>
+          </div>
+        )}
+        {/* Add more profile update fields and logic here as needed */}
+        <div className="pt-4">
+            <button type="button" className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <Edit3 size={16} className="mr-2" /> Edit Profile 
+            </button>
+        </div>
+      </div>
+      <button onClick={() => navigate('Dashboard')} className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                Back to Dashboard
+            </button>
+    </div>
+  );
+};
 
-// App Component
-function App() {
-  const { user, currentPage, navigate } = useAuth(); // Removed 'pageProps' as it's not used in this simplified router
 
-  // Simple Router Logic
+
+// App Content Renderer
+const AppContent = () => {
+  const { user, currentPage, pageNavigationProps } = useAuth();
+
   const renderPage = () => {
-    if (!user) {
-      switch (currentPage) {
-        case 'register':
-          return <RegisterPage />;
-        case 'login':
-        default:
-          return <LoginPage />;
-      }
-    }
-
-    // Authenticated Routes
-    // Pass props to components if needed, e.g. for RequestServicePage or MyTicketsPage
-    // For simplicity, I'm assuming props are passed via navigate state or context if complex
-    const pageProps = {}; // Example: if (currentPage === 'requestService') pageProps = { serviceId: someId, serviceName: someName };
-
     switch (currentPage) {
-      // Student
-      case 'studentDashboard':
-        return <StudentDashboard />;
-      case 'serviceList':
-        return <ServiceListPage />;
-      case 'requestService':
-        return <RequestServicePage {...pageProps} />; // You'd pass actual props here
-      case 'myTickets':
-        return <MyTicketsPage {...pageProps} />; // You'd pass actual props here
-      
-      // Staff
-      case 'staffDashboard':
-        return <StaffDashboard />;
-      case 'queueManagement':
-        return <QueueManagementPage />;
-
-      // Admin
-      case 'adminDashboard':
-        return <AdminDashboard />;
-      case 'userManagement':
-        return <UserManagementPage />;
-      case 'serviceManagement':
-        return <ServiceManagementPage />;
-      case 'officeManagement':
-        return <OfficeManagementPage />;
-      
-      // Common
-      case 'profile':
-        return <ProfilePage />;
-      
+      case 'login': return <LoginPage />;
+      case 'register': return <RegisterPage />;
+      case 'studentDashboard': return <Dashboard />;
+      case 'visitorDashboard': return <Dashboard />; // Visitors use the same Dashboard component
+      case 'staffDashboard': return <StaffDashboard />;
+      case 'adminDashboard': return <AdminDashboard />;
+      case 'serviceList': return <ServiceListPage />;
+      case 'requestService': return <RequestServicePage {...pageNavigationProps} />;
+      case 'myTickets': return <MyTicketsPage {...pageNavigationProps} />;
+      case 'campus-map': return <CampusMapPage />;
+      case 'profile': return <ProfilePage />;
+      case 'queueManagement': return <QueueManagementPage />;
+      case 'userManagement': return <UserManagementPage />;
+      case 'serviceManagement': return <ServiceManagementPage />;
+      case 'officeManagement': return <OfficeManagementPage />;
       default:
-        // Fallback to role-specific dashboard if page is unknown but user is logged in
-        if (user.role === 'student') return <StudentDashboard />;
-        if (user.role === 'staff') return <StaffDashboard />;
-        if (user.role === 'admin') return <AdminDashboard />;
-        return <LoginPage />; // Should not happen if logic is correct
+        // If logged in and unknown page, go to user's dashboard, else login
+        if (user) {
+            if (user.role === 'student') return <Dashboard />;
+            if (user.role === 'visitor') return <Dashboard />;
+            if (user.role === 'staff') return <StaffDashboard />;
+            if (user.role === 'admin') return <AdminDashboard />;
+        }
+        return <LoginPage />;
     }
   };
 
-  if (!user) {
-    return renderPage(); // Render login/register without Layout
+  if (currentPage === 'login' || currentPage === 'register') {
+    return renderPage();
   }
 
   return (
     <Layout>
       {renderPage()}
     </Layout>
+  );
+};
+
+// Main App Component
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
