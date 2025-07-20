@@ -317,7 +317,7 @@ export const useAuth = () => useContext(AuthContext);
 
 const Footer = () => (
   <footer className="bg-gray-100 text-center p-4 mt-auto text-sm text-gray-600 border-t">
-    &copy; {new Date().getFullYear()} PathWise Queuing and Navigation. All rights reserved.
+    &copy; {new Date().getFullYear()} PathWise Queuing, Reservation and Navigation. All rights reserved.
   </footer>
 );
 
@@ -343,32 +343,39 @@ const LoginPage = () => {
   const [contact, setContact] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
 
-    const credentials = { role };
-    if (role === 'visitor') {
-      credentials.name = name;
-      credentials.address = address;
-      credentials.contact = contact;
-      if (!name || !address || !contact) {
-        setError('Please provide your name, address, and contact information.');
-        return;
-      }
-    } else {
-      credentials.email = email;
-      credentials.password = password;
-      if (!email || !password) {
-        setError('Please provide your email and password.');
-        return;
-      }
+  const credentials = { role };
+
+  if (role === 'visitor') {
+    credentials.name = name;
+    credentials.address = address;
+    credentials.contact = contact;
+
+    if (!name || !address || !contact) {
+      setError('Please provide your name, address, and contact information.');
+      return;
     }
 
-    if (!login(credentials)) {
-      setError('Login failed. Please check your information or role.');
+  } else {
+    credentials.email = email;
+    credentials.password = password;
+
+    if (!email || !password) {
+      setError('Please provide your email and password.');
+      return;
     }
-  };
+  }
+
+  const success = await login(credentials);
+
+  if (!success) {
+    setError('Login failed. Please check your information or role.');
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 py-12 px-4 sm:px-6 lg:px-8">
@@ -458,8 +465,10 @@ const LoginPage = () => {
  const RegisterPage = () => {
    const { register, navigate } = useAuth();
    const [formData, setFormData] = useState({
-     name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: ''
+     name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: '',  course: "",
+    office: "", windowNo: "", section: "", department: "",
    });
+
    const [error, setError] = useState('');
    const [showSuccessModal, setShowSuccessModal] = useState(false);
  
@@ -467,43 +476,84 @@ const LoginPage = () => {
      setFormData({ ...formData, [e.target.name]: e.target.value });
    };
  
-   const handleSubmit = (e) => {
-     e.preventDefault();
-     setError('');
-     setShowSuccessModal(false); // Reset modal state on new submission
- 
-     // --- Validation Logic ---
-     if (formData.password !== formData.confirmPassword) {
-       setError("Passwords do not match.");
-       return;
-     }
-     if (!formData.name) {
-       setError("Name is required.");
-       return;
-     }
-     if (!formData.email) {
-       setError("Email is required.");
-       return;
-     }
-     if (formData.role === 'student' && !formData.studentId) {
-       setError("Student ID is required for student registration.");
-       return;
-     }
-     if (formData.role === 'staff' && !formData.staffId) {
-       setError("Staff ID is required for staff registration.");
-       return;
-     }
-     // --- End Validation Logic ---
- 
-     // Simulate successful registration
-     register(formData); // Mock register function from AuthContext
-     setShowSuccessModal(true); // Show the success modal
-     
-     // Optionally reset form fields after successful registration
-     setFormData({
-       name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: ''
-     });
-   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setShowSuccessModal(false);
+
+  if (formData.password !== formData.confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+  if (!formData.name) {
+    setError("Name is required.");
+    return;
+  }
+  if (!formData.email) {
+    setError("Email is required.");
+    return;
+  }
+  if (formData.role === 'student' && !formData.studentId) {
+    setError("Student ID is required for student registration.");
+    return;
+  }
+  if (formData.role === 'staff' && !formData.staffId) {
+    setError("Staff ID is required for staff registration.");
+    return;
+  }
+
+  const payload = {
+    name: formData.name,
+    email: formData.email,
+    password: formData.password,
+    role: formData.role,
+    studentId: formData.role === 'student' && formData.studentId.trim() !== '' ? formData.studentId : null,
+    staffId: formData.role === 'staff' && formData.staffId.trim() !== '' ? formData.staffId : null,
+    course: formData.role === 'student' ? formData.course : null,
+    office: formData.role === 'staff' ? formData.office : null,
+    windowNo: formData.office === 'Registrar' ? formData.windowNo : null,
+    section: formData.office === 'Library' ? formData.section : null,
+    department: formData.office === 'Departmental' ? formData.department : null,
+  };
+
+  try {
+    console.log("Sending:", payload);
+
+    const response = await fetch('http://localhost:3001/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.message || 'Registration failed.');
+    } else {
+      setShowSuccessModal(true);
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'student',
+        studentId: '',
+        staffId: '',
+        course: '',
+        office: '',
+        windowNo: '',
+        section: '',
+        department: '',
+      });
+    }
+  } catch (err) {
+    setError("Something went wrong. Please try again later.");
+    console.error(err);
+  }
+};
+
  
    const handleCloseSuccessModal = () => {
      setShowSuccessModal(false);
@@ -511,94 +561,164 @@ const LoginPage = () => {
    };
  
    return (
-     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-teal-500 py-12 px-4 sm:px-6 lg:px-8">
-       <div className="max-w-lg w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
-         <div>
-           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Student/Staff Registration</h2>
-         </div>
- 
-         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-           {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
-           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-             <div className="sm:col-span-2">
-               <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
-               <input type="text" name="name" id="name" required onChange={handleChange} value={formData.name}
-                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-             </div>
-             <div className="sm:col-span-2">
-               <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-               <input type="email" name="email" id="email" autoComplete="email" required onChange={handleChange} value={formData.email}
-                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-             </div>
-             <div>
-               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-               <input type="password" name="password" id="password" required onChange={handleChange} value={formData.password}
-                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-             </div>
-             <div>
-               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
-               <input type="password" name="confirmPassword" id="confirmPassword" required onChange={handleChange} value={formData.confirmPassword}
-                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-             </div>
-             <div className="sm:col-span-2">
-               <label htmlFor="role" className="block text-sm font-medium text-gray-700">Register as</label>
-               <select id="role" name="role" value={formData.role} onChange={handleChange} required
-                 className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
-                 <option value="student">Student</option>
-                 <option value="staff">Staff</option>
-               </select>
-             </div>
-             {formData.role === 'student' && (
-               <div className="sm:col-span-2">
-                 <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID</label>
-                 <input type="text" name="studentId" id="studentId" required={formData.role === 'student'} onChange={handleChange} value={formData.studentId}
-                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-               </div>
-             )}
-             {formData.role === 'staff' && (
-               <div className="sm:col-span-2">
-                 <label htmlFor="staffId" className="block text-sm font-medium text-gray-700">Staff ID</label>
-                 <input type="text" name="staffId" id="staffId" required={formData.role === 'staff'} onChange={handleChange} value={formData.staffId}
-                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
-               </div>
-             )}
-           </div>
-           <div className="flex items-center justify-between mt-6">
-             <div className="text-sm">
-               <button onClick={() => navigate('login')} type="button" className="font-medium text-teal-600 hover:text-teal-500">
-                 Already have an account? Sign in
-               </button>
-             </div>
-           </div>
-           <div>
-             <button type="submit"
-               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150">
-               Register
-             </button>
-           </div>
-         </form>
-       </div>
- 
-       {/* Registration Success Modal */}
-       {showSuccessModal && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-           <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
-             <h3 className="text-2xl font-bold text-green-600 mb-4">Registration Successful!</h3>
-             <p className="text-gray-700 mb-6">Your account has been created successfully.</p>
-             <button
-               onClick={handleCloseSuccessModal}
-               className="px-6 py-3 rounded-md text-base font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150"
-             >
-               Back to Sign In
-             </button>
-           </div>
-         </div>
-       )}
-     </div>
-   );
- };
- 
- 
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-teal-500 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-lg w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
+      <div>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Student/Staff Registration</h2>
+      </div>
+
+      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
+        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+            <input type="text" name="name" id="name" required onChange={handleChange} value={formData.name}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
+            <input type="email" name="email" id="email" autoComplete="email" required onChange={handleChange} value={formData.email}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" name="password" id="password" required onChange={handleChange} value={formData.password}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <input type="password" name="confirmPassword" id="confirmPassword" required onChange={handleChange} value={formData.confirmPassword}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Register as</label>
+            <select id="role" name="role" value={formData.role} onChange={handleChange} required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+              <option value="student">Student</option>
+              <option value="staff">Staff</option>
+            </select>
+          </div>
+
+          {formData.role === 'student' && (
+            <>
+              <div className="sm:col-span-2">
+                <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Student ID</label>
+                <input type="text" name="studentId" id="studentId" required onChange={handleChange} value={formData.studentId}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="course" className="block text-sm font-medium text-gray-700">Course</label>
+                <select name="course" value={formData.course} onChange={handleChange} required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                  <option value="">Select Course</option>
+                  <option value="BS InfoTech">BS InfoTech</option>
+                  <option value="BSEMC">BSEMC</option>
+                  <option value="BSIS">BSIS</option>
+                  <option value="BSA">BSA</option>
+                  <option value="BSCE">BSCE</option>
+                  <option value="BTVTED">BTVTED</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSHM">BSHM</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {formData.role === 'staff' && (
+            <>
+              <div className="sm:col-span-2">
+                <label htmlFor="staffId" className="block text-sm font-medium text-gray-700">Staff ID</label>
+                <input type="text" name="staffId" id="staffId" required onChange={handleChange} value={formData.staffId}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="office" className="block text-sm font-medium text-gray-700">Office</label>
+                <select name="office" value={formData.office} onChange={handleChange} required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                  <option value="">Select Office</option>
+                  <option value="Registrar">Registrar</option>
+                  <option value="Library">Library</option>
+                  <option value="Departmental">Departmental</option>
+                </select>
+              </div>
+
+              {formData.office === 'Registrar' && (
+                <div className="sm:col-span-2">
+                  <label htmlFor="windowNo" className="block text-sm font-medium text-gray-700">Window</label>
+                  <select name="windowNo" value={formData.windowNo} onChange={handleChange} required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                    <option value="">Select Window</option>
+                    <option value="Window 1">Window 1</option>
+                    <option value="Window 2">Window 2</option>
+                    <option value="Window 3">Window 3</option>
+                  </select>
+                </div>
+              )}
+
+              {formData.office === 'Library' && (
+                <div className="sm:col-span-2">
+                  <label htmlFor="section" className="block text-sm font-medium text-gray-700">Section</label>
+                  <select name="section" value={formData.section} onChange={handleChange} required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                    <option value="">Select Section</option>
+                    <option value="Computer Section">Computer Section</option>
+                    <option value="Reference Section">Reference Section</option>
+                  </select>
+                </div>
+              )}
+
+              {formData.office === 'Departmental' && (
+                <div className="sm:col-span-2">
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">Department</label>
+                  <select name="department" value={formData.department} onChange={handleChange} required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">
+                    <option value="">Select Department</option>
+                    <option value="CCS">CCS</option>
+                    <option value="CEA">CEA</option>
+                    <option value="CIT">CIT</option>
+                    <option value="CIE">CIE</option>
+                    <option value="BSHM">BSHM</option>
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm">
+            <button onClick={() => navigate('login')} type="button" className="font-medium text-teal-600 hover:text-teal-500">
+              Already have an account? Sign in
+            </button>
+          </div>
+        </div>
+        <div>
+          <button type="submit"
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150">
+            Register
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {/* Registration Success Modal */}
+    {showSuccessModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
+          <h3 className="text-2xl font-bold text-green-600 mb-4">Registration Successful!</h3>
+          <p className="text-gray-700 mb-6">Your account has been created successfully.</p>
+          <button
+            onClick={handleCloseSuccessModal}
+            className="px-6 py-3 rounded-md text-base font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition duration-150"
+          >
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+);
+ }
  
  
 
@@ -650,15 +770,14 @@ const Dashboard = () => {
 };
 
 
-
 const ServiceListPage = () => {
     const { navigate } = useAuth();
     // Mock services data
     const services = [
-        { id: 1, name: "Borrow Books", office: "Library", description: "Borrow books for your studies.", icon: <BookOpen size={24} className="text-indigo-500" /> },
-        { id: 2, name: "Transcript Request", office: "Registrar", description: "Request your official transcript of records.", icon: <Briefcase size={24} className="text-teal-500" /> },
-        { id: 3, name: "ID Application/Renewal", office: "Student Affairs", description: "Apply for a new ID or renew your existing one.", icon: <User size={24} className="text-sky-500" /> },
-        { id: 4, name: "Clearance Signing", office: "Various Offices", description: "Get your clearance form signed by relevant departments.", icon: <Edit3 size={24} className="text-amber-500" /> },
+        { id: 1, name: "Request for Academic Records", office: "Registrar", description: "Request your official academic records.", icon: <Briefcase size={24} className="text-teal-500" /> },
+        { id: 2, name: "ID Verification", office: "Registrar", description: "Verify your ID for validation.", icon: <User size={24} className="text-sky-500" /> },
+        { id: 3, name: "Borrow Books", office: "Library", description: "Borrow books for your studies.", icon: <BookOpen size={24} className="text-indigo-500" /> },
+       
     ];
 
     return (
@@ -693,76 +812,218 @@ const ServiceListPage = () => {
 };
 
 const RequestServicePage = ({ serviceId, serviceName }) => { // Props would be passed via navigate state
-    const { navigate } = useAuth();
-    const [formData, setFormData] = useState({});
-    const [message, setMessage] = useState('');
+  const { navigate } = useAuth();
+  const [formData, setFormData] = useState({});
+  const [message, setMessage] = useState('');
 
-    // Mock form fields based on serviceName (in a real app, this schema would come from backend)
-    const getFormFields = () => {
-        if (serviceName === "Borrow Books") {
-            return [{ name: "bookTitle", label: "Book Title/ISBN", type: "text", required: true }];
-        } else if (serviceName === "Transcript Request") {
-            return [
-                { name: "yearGraduated", label: "Year Graduated (if applicable)", type: "text" },
-                { name: "purpose", label: "Purpose of Request", type: "textarea", required: true }
-            ];
-        }
-        return [{ name: "details", label: "Details", type: "textarea", required: true }];
-    };
-    const formFields = getFormFields();
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-    const handleChange = (e) => {
-        setFormData({...formData, [e.target.name]: e.target.value });
-    };
+    if (serviceName === "Request for Academic Records" && name === "requestType") {
+      setFormData({ requestType: value });
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // Mock submission
-        console.log("Service Request Data:", { serviceId, serviceName, ...formData });
-        setMessage(`Your request for "${serviceName}" has been submitted! Your ticket number is XYZ-123. Proceed to [Office Location].`);
-        // In a real app, you'd get ticket number and navigation from backend
-        // Then navigate to a ticket status page or show modal.
-        setTimeout(() => {
-            navigate('myTickets', { ticketNumber: 'XYZ-123', serviceName: serviceName, office: 'Mock Office Location' });
-        }, 2000);
-    };
+  const getFormFields = () => {
+    if (serviceName === "Request for Academic Records") {
+      return [
+        { name: "fullName", label: "Full Name", type: "text", required: true },
+        { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+        { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"], required: true },
+        { name: "lastAcademicYear", label: "Academic Year Last Attended", type: "text", required: true },
+        { name: "contactNumber", label: "Contact Number", type: "text", required: true },
+        { name: "address", label: "Address", type: "text", required: true },
+        { name: "numberOfCopies", label: "Number of Copies", type: "number", required: true },
+        { name: "purpose", label: "Purpose", type: "textarea", required: true }
+      ];
+    }
 
-    return (
-        <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Request: {serviceName || "Service"}</h1>
-            <p className="text-gray-600 mb-6">Please fill out the details below.</p>
-            {message && <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700">{message}</div>}
-            {!message && (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {formFields.map(field => (
-                        <div key={field.name}>
-                            <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">{field.label}</label>
-                            {field.type === 'textarea' ? (
-                                <textarea id={field.name} name={field.name} rows="3" onChange={handleChange} required={field.required}
-                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                />
-                            ) : (
-                                <input type={field.type} id={field.name} name={field.name} onChange={handleChange} required={field.required}
-                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                />
-                            )}
-                        </div>
-                    ))}
-                    <div className="flex justify-end space-x-3">
-                         <button type="button" onClick={() => navigate('serviceList')}
-                            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Submit Request
-                        </button>
-                    </div>
-                </form>
+    if (serviceName === "Borrow Books") {
+      return [{  name: "fullName", label: "Full Name", type: "text", required: true },
+      { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+      { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
+      { name: "Email", label: "Email", type: "text", required: true },
+      { name: "contactNumber", label: "Contact Number", type: "text", required: false },
+      { name: "address", label: "Address", type: "text", required: true },
+      { name: "bookTitle", label: "Book Title/ISBN", type: "text", required: true }];
+    }
+
+    return [
+      { name: "fullName", label: "Full Name", type: "text", required: true },
+      { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+      { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
+      { name: "Email", label: "Email", type: "text", required: true },
+      { name: "contactNumber", label: "Contact Number", type: "text", required: false },
+      { name: "address", label: "Address", type: "text", required: true }
+    ];
+  };
+
+  const formFields = getFormFields();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Form submitted:", formData);
+    setMessage(`Your request for "${serviceName}" has been submitted!`);
+    setTimeout(() => {
+      navigate('myTickets', { ticketNumber: 'XYZ-123', serviceName, office: 'Registrar' });
+    }, 2000);
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">
+      <h1 className="text-3xl font-bold text-gray-800 mb-2">Request: {serviceName || "Service"}</h1>
+      <p className="text-gray-600 mb-6">Please fill out the details below.</p>
+      {message && <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700">{message}</div>}
+      {!message && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formFields.map(field => (
+            <div key={field.name}>
+              <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">{field.label}</label>
+              {field.type === 'textarea' ? (
+                <textarea id={field.name} name={field.name} rows="3" onChange={handleChange} required={field.required}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              ) : field.type === 'select' ? (
+                <select
+                  id={field.name}
+                  name={field.name}
+                  value={formData[field.name] || ""}
+                  onChange={handleChange}
+                  required={field.required}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">-- Select --</option>
+                  {field.options.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type={field.type} id={field.name} name={field.name} value={formData[field.name] || ""} onChange={handleChange} required={field.required}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              )}
+            </div>
+          ))}
+
+
+        {/* Manually controlled select field for requestType */}
+        {serviceName === "Request for Academic Records" && (
+          <>
+            <div>
+              <label htmlFor="requestType" className="block text-sm font-medium text-gray-700">Request Type</label>
+              <select
+                id="requestType"
+                name="requestType"
+                required
+                value={formData.requestType || ""}
+                onChange={handleChange}
+                className="appearance-none rounded-md w-full px-3 py-2 border border-gray-300 text-gray-900 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >
+                <option value="">-- Select --</option>
+                <option value="Certification">Certification</option>
+                <option value="Authentication">Authentication</option>
+                <option value="TranscriptA&R">Transcript Application & Releasing</option>
+              </select>
+            </div>
+
+            {formData.requestType === "Certification" && (
+              <div>
+                <label htmlFor="certificationType" className="block text-sm font-medium text-gray-700">
+                  Type of Certification
+                </label>
+                <select
+                  id="certificationType"
+                  name="certificationType"
+                  value={formData.certificationType || ""}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">-- Select --</option>
+                  <option value="TransferofCredentials">Transfer of Credentials</option>
+                  <option value="Graduation">Graduation</option>
+                  <option value="EarnedUnits">Earned Units</option>
+                  <option value="Enrolment">Enrolment</option>
+                  <option value="COG">Certificate of Grades (Indicate Year & Semester)</option>
+                </select>
+              </div>
             )}
+
+            {formData.certificationType === "Certificate of Grades (Indicate Year & Semester)" && formData.requestType === "Certification" && (
+              <div>
+                <label htmlFor="gradesSemester" className="block text-sm font-medium text-gray-700">
+                  Indicate the year and semester
+                </label>
+                <input
+                  type="text"
+                  id="gradesSemester"
+                  name="gradesSemester"
+                  value={formData.gradesSemester || ""}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            )}
+
+            {formData.requestType === "Authentication" && (
+              <div>
+                <label htmlFor="authenticationType" className="block text-sm font-medium text-gray-700">
+                  Type of Document for Authentication
+                </label>
+                <select
+                  id="authenticationType"
+                  name="authenticationType"
+                  value={formData.authenticationType || ""}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">-- Select --</option>
+                  <option value="TOR">Transcript of Records</option>
+                  <option value="Diploma">Diploma</option>
+                  <option value="Others">Other Academic Records</option>
+                </select>
+              </div>
+            )}
+
+            {formData.authenticationType === "Other Academic Records" && formData.requestType === "Authentication" && (
+              <div>
+                <label htmlFor="otherDocument" className="block text-sm font-medium text-gray-700">
+                  Please specify the academic document
+                </label>
+                <input
+                  type="text"
+                  id="otherDocument"
+                  name="otherDocument"
+                  value={formData.otherDocument || ""}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex justify-end space-x-3">
+          <button type="button" onClick={() => navigate('serviceList')}
+            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Cancel
+          </button>
+          <button type="submit"
+            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Submit Request
+          </button>
         </div>
-    );
-};
+      </form>
+    )}
+  </div>
+)};
+
+
 
 const MyTicketsPage = ({ newlyCreatedTicket }) => {
   const { navigate } = useAuth();
