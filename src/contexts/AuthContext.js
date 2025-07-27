@@ -39,27 +39,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-<<<<<<< HEAD
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   setUser(null);
 };
 
-=======
-    setUser(null);
-    setCurrentPage('login');
-  };
->>>>>>> f3b23cba806bbf113229b18fcd4de879a78cecc7
 
   const navigate = (page, props = {}) => {
     setPageNavigationProps(props);
     setCurrentPage(page);
   };
 
-<<<<<<< HEAD
-
-=======
->>>>>>> f3b23cba806bbf113229b18fcd4de879a78cecc7
   useEffect(() => {
     if (user && currentPage === 'login') {
       switch (user.role) {
