@@ -98,7 +98,7 @@ const handleSubmit = async (e) => {
  
    const handleCloseSuccessModal = () => {
      setShowSuccessModal(false);
-     navigate('login'); // Navigate to login page when modal is closed via the button
+     navigate('/login'); // Navigate to login page when modal is closed via the button
    };
  
    return (

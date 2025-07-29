@@ -17,46 +17,57 @@ const LoginPage = () => {
  const handleSubmit = async (e) => {
   e.preventDefault();
   setError('');
-  const credentials = { role };
 
+  // Frontend validation for visitor
   if (role === 'visitor') {
     if (!name || !address || !contact) {
-      setError('Please provide your name, address, and contact information.');
+      setError('Please complete all fields for visitor login.');
       return;
     }
-    Object.assign(credentials, { name, address, contact });
   } else {
+    // Frontend validation for student/staff/admin
     if (!email || !password) {
-      setError('Please provide your email and password.');
+      setError('Email and password are required.');
       return;
     }
-    Object.assign(credentials, { email, password });
   }
 
-  const success = await login(credentials);
+  const credentials = { role };
+  if (role === 'visitor') {
+    credentials.name = name;
+    credentials.address = address;
+    credentials.contact = contact;
+  } else {
+    credentials.email = email;
+    credentials.password = password;
+  }
 
-  if (!success) {
-    setError('Login failed. Please check your information or role.');
+  const result = await login(credentials);
+
+  if (result !== true) {
+    setError(result); // Show specific message from backend
     return;
   }
 
-  // Redirect based on role
+console.log("🟨 Submitting login data:", credentials);
+
+
+
   switch (role) {
-    case 'admin':
-      navigate('/admin');
+    case 'student':
+      navigate('/student');
       break;
     case 'staff':
       navigate('/staff');
       break;
-    case 'student':
-      navigate('/student');
+    case 'admin':
+      navigate('/admin');
       break;
     case 'visitor':
       navigate('/visitor');
       break;
     default:
-      navigate('/');
-      break;
+      navigate('/login');
   }
 };
 

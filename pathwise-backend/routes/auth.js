@@ -81,9 +81,41 @@ router.post('/register', async (req, res) => {
 
 
 // LOGIN ROUTE
-router.post('/login', (req, res) => {
-  const { email, password, role } = req.body;
+router.post('/login', async (req, res) => {
+  const { email, password, role, name, address, contact } = req.body;
 
+ if (role === 'visitor') {
+  if (!name || !address || !contact) {
+    return res.status(400).json({ message: 'Please provide all visitor info.' });
+  }
+
+  const insertVisitorQuery = `
+    INSERT INTO visitors (name, address, contact, role)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(insertVisitorQuery, [name, address, contact, 'visitor'], (err, result) => {
+    if (err) {
+      console.error('❌ Visitor DB Error:', err.message);
+      return res.status(500).json({ message: 'Visitors login failed.' });
+    }
+
+    return res.status(200).json({
+      message: 'Visitor login successful',
+      user: {
+        id: result.insertId,
+        name,
+        address,
+        contact,
+        role: 'visitor'
+      }
+    });
+  });
+
+  return;
+}
+
+  // For student/staff/admin
   if (!email || !password || !role) {
     return res.status(400).json({ message: 'All fields are required.' });
   }
@@ -108,7 +140,6 @@ router.post('/login', (req, res) => {
         return res.status(401).json({ message: 'Incorrect password.' });
       }
 
-      // Successful login
       return res.status(200).json({
         message: 'Login successful',
         user: {
@@ -133,34 +164,5 @@ router.post('/login', (req, res) => {
   });
 });
 
-
-// VISITOR LOGIN ROUTE
-router.post('/visitor-login', (req, res) => {
-  const { name, address, contact } = req.body;
-
-  if (!name || !address || !contact) {
-    return res.status(400).json({ message: 'All visitor fields are required.' });
-  }
-
-  const insertQuery = `INSERT INTO visitors (name, address, contact) VALUES (?, ?, ?)`;
-
-  db.query(insertQuery, [name, address, contact], (err, result) => {
-    if (err) {
-      console.error('❌ Visitor login error:', err.message);
-      return res.status(500).json({ message: 'Server error' });
-    }
-
-    res.json({
-      message: 'Visitor logged in',
-      user: {
-        id: result.insertId,
-        name,
-        address,
-        contact,
-        role: 'visitor'
-      }
-    });
-  });
-});
 
 module.exports = router;

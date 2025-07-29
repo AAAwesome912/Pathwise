@@ -6,19 +6,19 @@ import { Search, Ticket, User, Map } from 'lucide-react';
 const UserDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+const dashboardTitle = user?.role === 'visitor' 
+  ? 'Visitor Dashboard' 
+  : 'Student Dashboard';
 
-  const dashboardTitle =
-    user?.role === 'visitor' ? 'Visitor Dashboard' : 'Student Dashboard';
+const welcomeMessage = user?.role === 'visitor'
+  ? `Welcome, ${user?.name || 'Visitor'}! You may explore available services.` 
+  : `Welcome, ${user?.name || 'Student'}! Manage your requests and profile below.`;
 
-  const welcomeMessage =
-    user?.role === 'visitor'
-      ? 'Welcome visitor! You may explore available services.'
-      : 'Welcome student! Manage your requests and profile below.';
-
-  return (
-    <div className="bg-white p-8 rounded-xl shadow-xl">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">{dashboardTitle}</h1>
-      <p className="text-gray-600 mb-4">{welcomeMessage}</p>
+return (
+  <div className="bg-white p-8 rounded-xl shadow-xl">
+    <h1 className="text-3xl font-bold text-gray-800 mb-6">{dashboardTitle}</h1>
+    <p className="text-gray-600 mb-4">{welcomeMessage}</p>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <button

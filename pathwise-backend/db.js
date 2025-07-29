@@ -17,4 +17,13 @@ db.connect((err) => {
   console.log('✅ Connected to MySQL database.');
 });
 
+db.query('SELECT DATABASE() AS db', (err, result) => {
+  if (err) {
+    console.error('❌ Error checking active DB:', err.message);
+  } else {
+    console.log('✅ Connected to database:', result[0].db);
+  }
+});
+
+// ✅ EXPORT the db connection
 module.exports = db;
