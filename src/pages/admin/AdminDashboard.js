@@ -3,12 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; 
 import { Users, BookOpen, MapPin,} from 'lucide-react';
 
-// Import only the components actually used
-// import UserManagementPage from './UserManagementPage';
-// import ServiceManagementPage from './ServiceManagementPage';
-// import OfficeManagementPage from './OfficeManagementPage';
-// import ProfilePage from './ProfilePage';
-
 const AdminDashboard = () => {
   const  navigate  = useNavigate();
   const  user  = useAuth();

@@ -22,6 +22,7 @@ import OfficeManagementPage from './pages/Admin/OfficeManagementPage'
 import ServiceManagementPage from './pages/Admin/ServiceManagementPage'
 import UserManagementPage from './pages/Admin/UserManagementPage'
 
+import NowServingDisplayPage from './pages/NowServingDisplayPage';
 
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -71,6 +72,7 @@ const App = () => {
            <Route path="/officeManagement" element={<Layout><OfficeManagementPage /></Layout>} />
            <Route path="/UserManagement" element={<Layout><UserManagementPage /></Layout>} />
 
+           <Route path="/now-serving/:office" element={<NowServingDisplayPage />} />
         </Routes>
       </AuthProvider>
     </Router>

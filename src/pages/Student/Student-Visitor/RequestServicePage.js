@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+ import axios from 'axios';
+import { useAuth } from '../../../contexts/AuthContext'; 
 
 const RequestServicePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth(); // assuming user object contains user.id
   const location = useLocation();
   const { serviceName } = location.state || {};
 
@@ -42,6 +45,7 @@ const RequestServicePage = () => {
 
     if (serviceName === "Borrow Books") {
       return [
+
         { name: "fullName", label: "Full Name", type: "text", required: true },
         { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
         { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
@@ -64,14 +68,59 @@ const RequestServicePage = () => {
 
   const formFields = getFormFields();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    setMessage(`Your request for "${serviceName}" has been submitted!`);
-    setTimeout(() => {
-      navigate('/my-tickets', { state: { ticketNumber: 'XYZ-123', serviceName, office: 'Registrar' } });
-    }, 2000);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Construct structured JSON for additional_info
+  const additionalInfo = {
+    fullName: formData.fullName,
+    email: formData.Email || '',  // capital 'E' as used in your form
+    contactNumber: formData.contactNumber,
+    address: formData.address,
+    course: formData.course,
+    yearLevel: formData.yearLevel,
+    ...(formData.bookTitle && { bookTitle: formData.bookTitle }),
+    ...(formData.lastAcademicYear && { lastAcademicYear: formData.lastAcademicYear }),
+    ...(formData.requestType && { requestType: formData.requestType }),
+    ...(formData.certificationType && { certificationType: formData.certificationType }),
+    ...(formData.gradesSemester && { gradesSemester: formData.gradesSemester }),
+    ...(formData.authenticationType && { authenticationType: formData.authenticationType }),
+    ...(formData.otherDocument && { otherDocument: formData.otherDocument }),
+    ...(formData.numberOfCopies && { numberOfCopies: formData.numberOfCopies }),
+    ...(formData.purpose && { purpose: formData.purpose }),
   };
+
+  const ticketPayload = {
+    user_id: user.id,
+    name: formData.fullName,
+    office: serviceName === "Borrow Books" ? "Library" : "Registrar",
+    service: serviceName,
+    details: formData,
+    additional_info: JSON.stringify(additionalInfo),  // ✅ structured JSON string
+  };
+
+  try {
+    const res = await axios.post('http://192.168.101.18:3001/api/tickets', ticketPayload);
+    const ticketId = res.data.ticketId;
+
+    setMessage(`Your request for "${serviceName}" has been submitted!`);
+    
+    setTimeout(() => {
+      navigate('/my-tickets', {
+        state: {
+          ticketNumber: ticketId,
+          serviceName,
+          office: ticketPayload.office
+        }
+      });
+    }, 1000);
+  } catch (err) {
+    console.error(err);
+    setMessage('Something went wrong while submitting your ticket.');
+  }
+};
+
+
 
   return (
     <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">

@@ -20,7 +20,7 @@ const login = async (credentials) => {
   }
 
   // Send visitor info to backend to be saved
-  const response = await axios.post('http://localhost:3001/api/auth/login', {
+  const response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
     role,
     name,
     address,
@@ -31,7 +31,7 @@ const login = async (credentials) => {
 
     } else {
       // Normal login for student/staff/admin
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
         email,
         password,
         role

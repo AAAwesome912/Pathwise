@@ -60,7 +60,7 @@ const handleSubmit = async (e) => {
   try {
     console.log("Sending:", payload);
 
-    const response = await fetch('http://localhost:3001/api/auth/register', {
+    const response = await fetch('http://192.168.101.18:3001/api/auth/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

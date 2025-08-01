@@ -23,6 +23,7 @@ function createTicket(req, res) {
       if (err) return res.status(500).json({ error: err });
 
       const ticketId = results.insertId;
+      
       res.status(201).json({ success: true, ticketId });
     });
   });
@@ -36,11 +37,13 @@ function getTicketsByUser(req, res) {
     const enriched = tickets.map(ticket => ({
       ...ticket,
       form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {},
+      office_ticket_no: ticket.office_ticket_no  // <- make sure this is here
     }));
 
     res.json(enriched);
   });
 }
+
 
 function getTicketsByOffice(req, res) {
   Ticket.getByOffice(req.params.office, (err, tickets) => {
@@ -48,7 +51,8 @@ function getTicketsByOffice(req, res) {
 
     const enriched = tickets.map(ticket => ({
       ...ticket,
-      form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {}
+      form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {},
+      office_ticket_no: ticket.office_ticket_no
     }));
 
     res.json(enriched);
@@ -67,10 +71,10 @@ function getNowServingTicket(req, res) {
   console.log('Fetching now serving for:', office);
 
   const query = `
-    SELECT id
+    SELECT office_ticket_no
     FROM tickets
     WHERE office = ? AND status = 'in_progress'
-    ORDER BY id ASC
+    ORDER BY created_at ASC
     LIMIT 1
   `;
 
@@ -83,7 +87,7 @@ function getNowServingTicket(req, res) {
     console.log('Results:', results);
 
     if (results.length > 0) {
-      res.json({ nowServingTicketNumber: results[0].id });
+      res.json({ nowServingTicketNumber: results[0].office_ticket_no });
     } else {
       res.json({ nowServingTicketNumber: null });
     }
@@ -91,10 +95,78 @@ function getNowServingTicket(req, res) {
 }
 
 
+function getWaitingCount(req, res) {
+  const { office } = req.params;
+  Ticket.countWaitingByOffice(office, (err, count) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json({ waitingCount: count });
+  });
+}
+
+function serveTicket(req, res) {
+  const { id } = req.params;
+  const { windowNo } = req.body;  // only windowNo is needed
+
+  const sql = `
+    UPDATE tickets
+    SET status = 'in_progress',
+        form_data = JSON_SET(form_data, '$.window', ?)
+    WHERE id = ?
+  `;
+
+  db.query(sql, [windowNo, id], (err) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json({ success: true });
+  });
+}
+
+function resetOfficeTicketNumbers(req, res) {
+  const { office } = req.body;
+
+  if (!office) {
+    return res.status(400).json({ error: 'Office is required' });
+  }
+
+  Ticket.resetOfficeTicketNo(office, (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to reset ticket numbers' });
+
+    res.json({ success: true, message: `Ticket numbers reset for office: ${office}` });
+  });
+}
+
+
+  function cancelTicket(req, res) {
+  const { office, officeTicketNo } = req.params;
+
+  const query = `
+    UPDATE tickets
+    SET status = 'cancelled'
+    WHERE office = ? AND office_ticket_no = ? AND status NOT IN ('done', 'cancelled')
+  `;
+
+  db.query(query, [office, officeTicketNo], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to cancel ticket' });
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: 'Ticket not found or already completed' });
+    }
+
+    res.json({ success: true, message: 'Ticket cancelled successfully' });
+  });
+}
+
+
+
+
+
 module.exports = {
   createTicket,
   getTicketsByUser,
   getTicketsByOffice,
   updateTicketStatus,
-  getNowServingTicket
+  getNowServingTicket,
+  getWaitingCount,
+  serveTicket,
+  resetOfficeTicketNumbers,
+  cancelTicket
 };
