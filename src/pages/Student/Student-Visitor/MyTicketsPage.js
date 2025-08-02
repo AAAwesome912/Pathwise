@@ -8,10 +8,12 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Preload sounds
 const sounds = {
-  called: new Audio('public/called.mp3'),
-  in_progress: new Audio('public/in_progress.mp3'),
-  done: new Audio('public/done.mp3'),
+  called: new Audio('/sounds/called.mp3'),
+  in_progress: new Audio('/sounds/in_progress.mp3'),
+  done: new Audio('/sounds/done.mp3'),
 };
+
+// ...imports remain unchanged
 
 const MyTicketsPage = ({ newlyCreatedTicket }) => {
   const navigate = useNavigate();
@@ -22,6 +24,13 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
   const prevTicketsRef = useRef([]);
 
   useEffect(() => {
+  const stored = localStorage.getItem('notifiedStatus');
+  if (stored) {
+    notifiedStatus.current = JSON.parse(stored);
+  }
+}, []);
+
+  useEffect(() => {
     if (user?.id) {
       const interval = setInterval(() => {
         axios
@@ -29,14 +38,13 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
           .then(res => {
             const newTickets = res.data;
 
-            // Notify and play sound on status change
             newTickets.forEach(ticket => {
               const prevTicket = prevTicketsRef.current.find(t => t.id === ticket.id);
               const prevStatus = prevTicket?.status;
               const currentStatus = ticket.status;
-              const statusKey = `${ticket.id}-${currentStatus}`;
+              const lastNotifiedStatus = notifiedStatus.current[ticket.id];
 
-              if (prevStatus !== currentStatus && !notifiedStatus.current[statusKey]) {
+              if (prevStatus !== currentStatus && lastNotifiedStatus !== currentStatus) {
                 if (currentStatus === 'in_progress') {
                   toast.info(`🎫 Ticket #${ticket.office_ticket_no} is now being served.`);
                   sounds.in_progress.play();
@@ -47,26 +55,30 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                   toast.success(`✅ Ticket #${ticket.office_ticket_no} has been marked as done.`);
                   sounds.done.play();
                 }
-                notifiedStatus.current[statusKey] = true;
+                notifiedStatus.current[ticket.id] = currentStatus;
+                localStorage.setItem('notifiedStatus', JSON.stringify(notifiedStatus.current));
               }
             });
 
             prevTicketsRef.current = newTickets;
-            setTickets(newTickets.filter(t => t.status !== 'done')); // filter out done tickets
+            setTickets(newTickets.filter(t => t.status !== 'done' && t.status !== 'cancelled'));
           })
           .catch(err => console.error('Error fetching tickets:', err));
-      }, 100);
+      }, 1000);
 
       return () => clearInterval(interval);
     }
-  }, [user?.id]);
+  }, [user?.id, notifiedStatus]);
+
 
   useEffect(() => {
     const fetchNowServing = async () => {
       try {
         const firstTicket = tickets[0];
-        if (firstTicket && firstTicket.office) {
-          const response = await axios.get(`http://192.168.101.18:3001/api/tickets/now-serving/${firstTicket.office}`);
+        if (firstTicket?.office) {
+          const response = await axios.get(
+            `http://192.168.101.18:3001/api/tickets/now-serving/${firstTicket.office}`
+          );
           setNowServing(response.data.nowServingTicketNumber);
         }
       } catch (err) {
@@ -99,25 +111,21 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
   };
 
   const cancelTicket = async (office, officeTicketNo) => {
-  try {
-    const response = await axios.put(
-      `http://192.168.101.18:3001/api/tickets/cancel/${office}/${officeTicketNo}`
-    );
-    alert(response.data.message);
+    const confirmCancel = window.confirm(`Are you sure you want to cancel ticket #${officeTicketNo}?`);
+    if (!confirmCancel) return;
 
-    // Remove the cancelled ticket from the state
-    setTickets(prev =>
-      prev.filter(ticket => !(ticket.office === office && ticket.office_ticket_no === officeTicketNo))
-    );
-  } catch (error) {
-    console.error('Failed to cancel ticket:', error);
-    alert(
-      error.response?.data?.error ||
-      'Something went wrong while cancelling the ticket.'
-    );
-  }
-};
+    try {
+      await axios.put(`http://192.168.101.18:3001/api/tickets/cancel/${office}/${officeTicketNo}`);
+      toast.warn(`❌ Ticket #${officeTicketNo} has been cancelled.`);
+      const cancelSound = new Audio('/sounds/cancelled.mp3');
+      cancelSound.play();
 
+      setTickets(prev => prev.filter(t => t.office_ticket_no !== officeTicketNo));
+    } catch (error) {
+      console.error('Failed to cancel ticket:', error);
+      alert(error.response?.data?.error || 'Something went wrong while cancelling the ticket.');
+    }
+  };
 
   return (
     <div className="bg-white p-8 rounded-xl shadow-xl">
@@ -147,7 +155,15 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                   <p className="text-sm text-gray-500">
                     Office: <span className="font-medium">{ticket.office}</span>
                   </p>
+                  
+                  {/* ✅ Display assigned window if available */}
+                  {ticket.window_no && (
+                    <p className="text-sm text-gray-500">
+                      Assigned: <span className="font-medium"> {ticket.window_no}</span>
+                    </p>
+                  )}
                 </div>
+
                 <span
                   className={`px-3 py-1 text-xs font-semibold rounded-full ${
                     ticket.status === 'waiting'
@@ -177,21 +193,24 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                   <MapPin size={18} className="mr-2 mt-0.5 text-blue-500 flex-shrink-0" />
                   {ticket.navDetails || 'Location details unavailable'}
                 </p>
-                <button
-                  onClick={() => navigate('/map')}
-                  className="mt-7 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md transition duration-100"
-                >
-                  Use Campus Map
-                </button>
-                   {ticket.status === 'waiting' && (
+
+                <div className="flex gap-3 mt-6">
                   <button
-                    className="bg-red-500 text-white px-4 py-2 rounded mt-2"
-                    onClick={() => cancelTicket(ticket.office, ticket.office_ticket_no)}
+                    onClick={() => navigate('/map')}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md transition duration-100"
                   >
-                    Cancel Ticket
+                    Use Campus Map
                   </button>
 
-                )}
+                  {ticket.status === 'waiting' && (
+                    <button
+                      onClick={() => cancelTicket(ticket.office, ticket.office_ticket_no)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

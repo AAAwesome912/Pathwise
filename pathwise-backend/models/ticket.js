@@ -28,10 +28,21 @@ const Ticket = {
     db.query(query, [userId], callback);
   },
 
-  getByOffice: (office, callback) => {
-    const query = 'SELECT * FROM tickets WHERE office = ? ORDER BY created_at ASC';
-    db.query(query, [office], callback);
-  },
+ getByOffice: (office, callback) => {
+  const query = 'SELECT * FROM tickets WHERE office = ? ORDER BY created_at ASC';
+  db.query(query, [office], callback);
+},
+
+getTicketsByUserId: (userId, callback) => {
+  const query = `
+    SELECT id, user_id, office, service, office_ticket_no, status, position, created_at, window_no
+    FROM tickets
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `;
+  db.query(query, [userId], callback);
+},
+
 
   updateStatus: (id, status, callback) => {
     const query = 'UPDATE tickets SET status = ? WHERE id = ?';

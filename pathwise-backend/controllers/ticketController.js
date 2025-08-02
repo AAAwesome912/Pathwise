@@ -5,17 +5,19 @@ const Ticket = require('../models/Ticket');
 function createTicket(req, res) {
   const { user_id, name, office, service, additional_info, form_data } = req.body;
 
-  // Check if the user already has a ticket for the same service and not done
+  // Check if the user already has a non-cancelled ticket for the same office
   const checkQuery = `
     SELECT * FROM tickets 
-    WHERE user_id = ? AND service = ? AND status != 'done'
+    WHERE user_id = ? 
+      AND office = ? 
+      AND status NOT IN ('done', 'cancelled')
   `;
 
-  db.query(checkQuery, [user_id, service], (err, existing) => {
+  db.query(checkQuery, [user_id, office], (err, existing) => {
     if (err) return res.status(500).json({ error: 'Database error during duplicate check' });
 
     if (existing.length > 0) {
-      return res.status(400).json({ error: 'You already have a pending request for this service.' });
+      return res.status(400).json({ error: 'You already have a pending request in this office.' });
     }
 
     // Proceed to create ticket
@@ -60,11 +62,36 @@ function getTicketsByOffice(req, res) {
 }
 
 function updateTicketStatus(req, res) {
-  Ticket.updateStatus(req.params.id, req.body.status, (err) => {
-    if (err) return res.status(500).json({ error: err });
+  const { status, windowNo } = req.body;
+  const ticketId = req.params.id;
+
+  let sql, values;
+
+  if (windowNo) {
+    // Update both status and window
+    sql = `
+        UPDATE tickets
+        SET status = ?, window_no = ?
+        WHERE id = ?
+      `;
+      values = [status, windowNo, ticketId];
+
+  } else {
+    // Update only status
+    sql = `
+      UPDATE tickets
+      SET status = ?
+      WHERE id = ?
+    `;
+    values = [status, ticketId];
+  }
+
+  db.query(sql, values, (err) => {
+    if (err) return res.status(500).json({ error: 'DB error during status update' });
     res.json({ success: true });
   });
 }
+
 
 function getNowServingTicket(req, res) {
   const { office } = req.params;
@@ -120,6 +147,32 @@ function serveTicket(req, res) {
   });
 }
 
+function callTicket(req, res) {
+  const ticketId = req.params.id;
+  const staffWindow = req.user?.windowNo; // Make sure this matches your AuthContext structure
+
+  if (!staffWindow) {
+    return res.status(400).json({ error: 'Staff window number not found in user data.' });
+  }
+
+  const updateQuery = `
+    UPDATE tickets 
+    SET status = 'called', called_at = NOW(), window_no = ? 
+    WHERE id = ?
+  `;
+
+  db.query(updateQuery, [staffWindow, ticketId], (err, result) => {
+    if (err) {
+      console.error('DB error:', err);
+      return res.status(500).json({ error: 'Database error while calling ticket.' });
+    }
+
+    res.json({ success: true, message: 'Ticket called and window number saved.' });
+  });
+}
+
+
+
 function resetOfficeTicketNumbers(req, res) {
   const { office } = req.body;
 
@@ -157,8 +210,6 @@ function resetOfficeTicketNumbers(req, res) {
 
 
 
-
-
 module.exports = {
   createTicket,
   getTicketsByUser,
@@ -168,5 +219,6 @@ module.exports = {
   getWaitingCount,
   serveTicket,
   resetOfficeTicketNumbers,
-  cancelTicket
+  cancelTicket,
+  callTicket
 };
