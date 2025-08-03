@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-toastify';
 import { ChevronDown, LogOut, User, LayoutDashboard, Ticket, Users, BookOpen, MapPin, Search, Bell } from 'lucide-react';
 
 
@@ -56,13 +57,26 @@ const Navbar = () => {
      setMobileMenuOpen(false); // Close mobile menu if open
    };
  
-   const confirmLogout = () => {
-  logout(); // clear auth data
+   const confirmLogout = async () => {
+  await logout(); // clears user + backend token
   setShowLogoutModal(false); // close modal
-  navigate('/login'); // ✅ navigate to login page
+
+  // ✅ SHOW TOAST
+  toast.success('You have been logged out.', {
+    position: 'top-center',
+    autoClose: 2000,
+    hideProgressBar: true,
+    closeOnClick: true,
+    pauseOnHover: false,
+    draggable: true,
+  });
+
+  // ⏱ Slight delay before navigating
+  setTimeout(() => {
+    navigate('/login');
+  },);
 };
 
- 
    const cancelLogout = () => {
      setShowLogoutModal(false); // Close the modal
    };

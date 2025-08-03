@@ -7,7 +7,7 @@ const RegisterPage = () => {
 
    const [formData, setFormData] = useState({
      name: '', email: '', password: '', confirmPassword: '', role: 'student', studentId: '', staffId: '',  course: "",
-    office: "", windowNo: "", section: "", department: "",
+    office: "", windowNo: "", section: "", department: "",  contact: '', address: '',
    });
 
    const [error, setError] = useState('');
@@ -34,6 +34,10 @@ const handleSubmit = async (e) => {
     setError("Email is required.");
     return;
   }
+  if (!formData.address) {
+    setError("Address is required.");
+    return;
+  }
   if (formData.role === 'student' && !formData.studentId) {
     setError("Student ID is required for student registration.");
     return;
@@ -44,8 +48,10 @@ const handleSubmit = async (e) => {
   }
 
   const payload = {
-    name: formData.name,
-    email: formData.email,
+    name: formData.name.trim(),
+    email: formData.email.trim(),
+    contact: formData.contact.trim(),
+    address: formData.address.trim(),
     password: formData.password,
     role: formData.role,
     studentId: formData.role === 'student' && formData.studentId.trim() !== '' ? formData.studentId : null,
@@ -55,6 +61,7 @@ const handleSubmit = async (e) => {
     windowNo: formData.office === 'Registrar' ? formData.windowNo : null,
     section: formData.office === 'Library' ? formData.section : null,
     department: formData.office === 'Departmental' ? formData.department : null,
+    
   };
 
   try {
@@ -77,6 +84,8 @@ const handleSubmit = async (e) => {
       setFormData({
         name: '',
         email: '',
+        contact: '', 
+        address: '', 
         password: '',
         confirmPassword: '',
         role: 'student',
@@ -121,6 +130,17 @@ const handleSubmit = async (e) => {
             <input type="email" name="email" id="email" autoComplete="email" required onChange={handleChange} value={formData.email}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
           </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="contact" className="block text-sm font-medium text-gray-700">Contact Number</label>
+            <input type="text" name="contact" id="contact" onChange={handleChange} value={formData.contact}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+            <input type="text" name="address" id="address" onChange={handleChange} value={formData.address}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" />
+          </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
             <input type="password" name="password" id="password" required onChange={handleChange} value={formData.password}
@@ -163,6 +183,7 @@ const handleSubmit = async (e) => {
                 </select>
               </div>
             </>
+            
           )}
 
           {formData.role === 'staff' && (

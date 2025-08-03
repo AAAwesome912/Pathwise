@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import axios from '../../utils/axiosInstance'; 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -15,26 +15,34 @@ const StaffDashboard = () => {
 
   useEffect(() => {
   const fetchQueueCount = async () => {
-    if (!user || !user.office) return;
+  if (!user || !user.office) return;
 
-    try {
-      const res = await axios.get(
-        `http://192.168.101.18:3001/api/tickets/office/${user.office}/waiting-count`
-      );
-
-      const waitingCount = res.data.waitingCount || 0;
-
-      if (waitingCount > prevQueueCount.current) {
-        audioRef.current?.play().catch(err => console.log('Sound play error:', err));
-        toast.info('🔔 New student added to the queue!');
+  try {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(
+      `/api/tickets/office/${user.office}/waiting-count`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
+    );
 
-      prevQueueCount.current = waitingCount;
-      setQueueCount(waitingCount);
-    } catch (err) {
-      console.error('Failed to fetch queue count', err);
+    const waitingCount = res.data.waitingCount || 0;
+
+    if (waitingCount > prevQueueCount.current) {
+      audioRef.current?.play().catch(err => console.log('Sound play error:', err));
+      toast.info('🔔 New student added to the queue!');
     }
-  };
+
+    prevQueueCount.current = waitingCount;
+    setQueueCount(waitingCount);
+  } catch (err) {
+    console.error('Failed to fetch queue count', err);
+    toast.error('❌ Unauthorized access. Please log in again.');
+  }
+};
+
 
   fetchQueueCount();
 

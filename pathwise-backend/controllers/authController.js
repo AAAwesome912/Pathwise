@@ -1,9 +1,16 @@
 const { createUser } = require('../models/userModel');
 
 const register = (req, res) => {
-  const userData = req.body;
+  const userData = {
+  ...req.body,
+  name: req.body.name?.trim(),
+  email: req.body.email?.trim(),
+  role: req.body.role?.trim(),
+  address: req.body.address?.trim(),
+  contact: req.body.contact?.trim(),
+};
 
-  if (!userData.name || !userData.email || !userData.password || !userData.role) {
+  if (!userData.name || !userData.email || !userData.address || !userData.password || !userData.role) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 

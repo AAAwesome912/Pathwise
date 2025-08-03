@@ -12,36 +12,38 @@ const login = async (credentials) => {
   const { role, email, password, name, address, contact } = credentials;
 
   try {
+    let response;
     let userData;
+    let token;
 
-   if (role === 'visitor') {
-  if (!name || !address || !contact) {
-    throw new Error("Please complete all required fields.");
-  }
+    if (role === 'visitor') {
+      if (!name || !address || !contact) {
+        throw new Error("Please complete all required fields.");
+      }
 
-  // Send visitor info to backend to be saved
-  const response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
-    role,
-    name,
-    address,
-    contact
-  });
-
-  userData = response.data.user;
-
+      response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
+        role,
+        name,
+        address,
+        contact
+      });
     } else {
-      // Normal login for student/staff/admin
-      const response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
+      response = await axios.post('http://192.168.101.18:3001/api/auth/login', {
         email,
         password,
         role
       });
-
-      userData = response.data.user;
     }
 
+    // Extract token and user
+    token = response.data.token;
+    userData = response.data.user;
+
+    // 🟢 Save to localStorage
+    localStorage.setItem('token', token); // Store JWT token
+    localStorage.setItem('user', JSON.stringify(userData)); // Store user info
+
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
 
     // Navigate based on role
     switch (userData.role) {
@@ -63,9 +65,8 @@ const login = async (credentials) => {
 
     return true;
   } catch (err) {
-  console.error('Login error:', err.message);
-  return err.response?.data?.message || "Login failed.";
-
+    console.error('Login error:', err.message);
+    return err.response?.data?.message || "Login failed.";
   }
 };
 
@@ -74,10 +75,18 @@ const login = async (credentials) => {
     console.log('Registering user:', userData);
   };
 
-  const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  setUser(null);
+  const logout = async () => {
+  try {
+    if (user?.id) {
+      await axios.post('http://192.168.101.18:3001/api/auth/logout', { id: user.id });
+    }
+  } catch (error) {
+    console.error('Logout error:', error.response?.data || error.message);
+  } finally {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  }
 };
 
 

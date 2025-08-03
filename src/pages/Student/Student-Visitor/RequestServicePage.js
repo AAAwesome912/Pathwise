@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, {  useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
- import axios from 'axios';
+import axios from '../../../utils/axiosInstance';
 import { useAuth } from '../../../contexts/AuthContext'; 
 
 const RequestServicePage = () => {
@@ -8,9 +8,31 @@ const RequestServicePage = () => {
   const { user } = useAuth(); // assuming user object contains user.id
   const location = useLocation();
   const { serviceName } = location.state || {};
-
-  const [formData, setFormData] = useState({});
   const [message, setMessage] = useState('');
+
+  const [formData, setFormData] = useState({
+  fullName: '',
+  Email: '',
+  contactNumber: '',
+  address: '',
+  course: '',
+  yearLevel: '',
+});
+
+useEffect(() => {
+  if (user) {
+    setFormData(prev => ({
+      ...prev,
+      fullName: user.name || '',
+      Email: user.email || '',
+      contactNumber: user.contact || '',
+      course: user.course || '',
+      yearLevel: user.yearLevel || '',
+      address: user.address || ''
+    }));
+  }
+}, [user]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,12 +117,11 @@ const handleSubmit = async (e) => {
     name: formData.fullName,
     office: serviceName === "Borrow Books" ? "Library" : "Registrar",
     service: serviceName,
-    details: formData,
     additional_info: JSON.stringify(additionalInfo),  // ✅ structured JSON string
   };
 
   try {
-    const res = await axios.post('http://192.168.101.18:3001/api/tickets', ticketPayload);
+    const res = await axios.post('/api/tickets', ticketPayload);
     const ticketId = res.data.ticketId;
 
     setMessage(`Your request for "${serviceName}" has been submitted!`);
@@ -157,7 +178,7 @@ const handleSubmit = async (e) => {
                   required={field.required}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                 >
-                  <option value="">-- Select --</option>
+                  <option value="" disabled>-- Select Year Level --</option>
                   {field.options.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}

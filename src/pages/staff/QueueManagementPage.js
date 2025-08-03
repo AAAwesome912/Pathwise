@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import axios from '../../utils/axiosInstance';
+import { Megaphone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const BASE_URL = 'http://192.168.101.18:3001';
 
 const fieldLabels = {
   fullName: 'Full Name',
@@ -38,11 +38,13 @@ const QueueManagementPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [windows, setWindows] = useState({});
+  
 
   const fetchQueue = useCallback(async () => {
     if (!user?.office) return;
     try {
-      const { data } = await axios.get(`${BASE_URL}/api/tickets/office/${user.office}`);
+      const { data } = await axios.get(`/api/tickets/office/${user.office}`);
+      
 
       const grouped = {};
       data.forEach((raw) => {
@@ -86,11 +88,12 @@ const QueueManagementPage = () => {
 
 
   const patchStatus = async (id, status) =>
-    axios.patch(`${BASE_URL}/api/tickets/${id}/status`, { status });
+    axios.patch(`/api/tickets/${id}/status`, { status });
+ 
 
   const handleServeNow = async (ticket) => {
     try {
-      await axios.patch(`${BASE_URL}/api/tickets/${ticket.id}/serve`, { windowNo: user?.windowNo });
+      await axios.patch(`/api/tickets/${ticket.id}/serve`, { windowNo: user?.windowNo });
       fetchQueue();
     } catch (err) {
       toast.error('Failed to start serving ticket');
@@ -99,7 +102,7 @@ const QueueManagementPage = () => {
 
   const handleCall = async (ticket) => {
   try {
-    await axios.patch(`${BASE_URL}/api/tickets/${ticket.id}/status`, {
+    await axios.patch(`/api/tickets/${ticket.id}/status`, {
       status: 'called',
       windowNo: user?.windowNo,
     });
@@ -126,7 +129,7 @@ const QueueManagementPage = () => {
   if (!confirmReset) return;
 
   try {
-    await axios.post(`${BASE_URL}/api/tickets/reset-office-ticket`, {
+    await axios.post(`/api/tickets/reset-office-ticket`, {
       office: user?.office,
     });
     toast.success('Ticket numbers have been reset.');
@@ -181,10 +184,11 @@ const QueueManagementPage = () => {
         <div className="flex flex-col gap-2 ml-auto">
           {showCall && (
             <button
-              className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-1 rounded"
+              className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-1 rounded flex items-center gap-1"
               onClick={() => handleCall(t)}
             >
-              Called
+              Call Next
+               <Megaphone size={16} className="ml-1 text-white animate-wiggle" />
             </button>
           )}
           {showServe && (

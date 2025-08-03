@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../../../utils/axiosInstance';
 import { MapPin } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+
 // Preload sounds
-const sounds = {
-  called: new Audio('/sounds/called.mp3'),
-  in_progress: new Audio('/sounds/in_progress.mp3'),
-  done: new Audio('/sounds/done.mp3'),
-};
+// const sounds = {
+//   called: new Audio('/sounds/called.mp3'),
+//   in_progress: new Audio('/sounds/in_progress.mp3'),
+//   done: new Audio('/sounds/done.mp3'),
+// };
 
 // ...imports remain unchanged
 
@@ -30,45 +31,61 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
   }
 }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     if (user?.id) {
       const interval = setInterval(() => {
         axios
-          .get(`http://192.168.101.18:3001/api/tickets/user/${user.id}`)
+          .get(`/api/tickets/user/${user.id}`)
           .then(res => {
-            const newTickets = res.data;
+              const newTickets = res.data;
 
-            newTickets.forEach(ticket => {
-              const prevTicket = prevTicketsRef.current.find(t => t.id === ticket.id);
-              const prevStatus = prevTicket?.status;
-              const currentStatus = ticket.status;
-              const lastNotifiedStatus = notifiedStatus.current[ticket.id];
+              newTickets.forEach(ticket => {
+                const prevTicket = prevTicketsRef.current.find(t => t.id === ticket.id);
+                const prevStatus = prevTicket?.status;
+                const currentStatus = ticket.status;
+                const lastNotifiedStatus = notifiedStatus.current[ticket.id];
 
-              if (prevStatus !== currentStatus && lastNotifiedStatus !== currentStatus) {
+                if (prevStatus !== currentStatus && lastNotifiedStatus !== currentStatus) {
                 if (currentStatus === 'in_progress') {
                   toast.info(`🎫 Ticket #${ticket.office_ticket_no} is now being served.`);
-                  sounds.in_progress.play();
+                  const audio = new Audio('/sounds/in_progress.mp3');
+                  audio.play().catch(err =>
+                    console.warn('🔇 in_progress sound blocked:', err.message)
+                  );
                 } else if (currentStatus === 'called') {
                   toast.info(`📢 Ticket #${ticket.office_ticket_no} is being called. Please proceed to the counter.`);
-                  sounds.called.play();
+                  const audio = new Audio('/sounds/called.mp3');
+                  audio.play().catch(err =>
+                    console.warn('🔇 called sound blocked:', err.message)
+                  );
                 } else if (currentStatus === 'done') {
-                  toast.success(`✅ Ticket #${ticket.office_ticket_no} has been marked as done.`);
-                  sounds.done.play();
+                  toast.success(`✅ Ticket #${ticket.office_ticket_no} has been served.`);
+                  const audio = new Audio('/sounds/done.mp3');
+                  audio.play().catch(err =>
+                    console.warn('🔇 done sound blocked:', err.message)
+                  );
                 }
+
                 notifiedStatus.current[ticket.id] = currentStatus;
                 localStorage.setItem('notifiedStatus', JSON.stringify(notifiedStatus.current));
               }
-            });
 
-            prevTicketsRef.current = newTickets;
-            setTickets(newTickets.filter(t => t.status !== 'done' && t.status !== 'cancelled'));
-          })
-          .catch(err => console.error('Error fetching tickets:', err));
-      }, 1000);
+              });
+
+              // ✅ Update both ref and state
+              prevTicketsRef.current = newTickets;
+              setTickets(newTickets); // ✅ This was missing
+            })
+
+          .catch(err => {
+            console.error('❌ Failed to fetch tickets:', err);
+          });
+      }, 1000); // Poll every 3 seconds
 
       return () => clearInterval(interval);
     }
-  }, [user?.id, notifiedStatus]);
+  }, [user]);
+
 
 
   useEffect(() => {
@@ -77,7 +94,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
         const firstTicket = tickets[0];
         if (firstTicket?.office) {
           const response = await axios.get(
-            `http://192.168.101.18:3001/api/tickets/now-serving/${firstTicket.office}`
+            `/api/tickets/now-serving/${firstTicket.office}`
           );
           setNowServing(response.data.nowServingTicketNumber);
         }
@@ -115,7 +132,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
     if (!confirmCancel) return;
 
     try {
-      await axios.put(`http://192.168.101.18:3001/api/tickets/cancel/${office}/${officeTicketNo}`);
+      await axios.put(`/api/tickets/cancel/${office}/${officeTicketNo}`);
       toast.warn(`❌ Ticket #${officeTicketNo} has been cancelled.`);
       const cancelSound = new Audio('/sounds/cancelled.mp3');
       cancelSound.play();
@@ -141,7 +158,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
         </p>
       ) : (
         <div className="space-y-6">
-          {tickets.map(ticket => (
+          {tickets.filter(ticket => ticket.status !== 'done' && ticket.status !== 'cancelled').map(ticket => (
             <div
               key={ticket.id}
               className={`p-6 rounded-lg shadow-md border ${getBoxColor(ticket.status)}`}
