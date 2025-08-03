@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
-import { ChevronDown, LogOut, User, LayoutDashboard, Ticket, Users, BookOpen, MapPin, Search, Bell } from 'lucide-react';
+import { ChevronDown, LogOut, User, LayoutDashboard, Ticket, Users, BookOpen, MapPin, Search, Bell, Archive } from 'lucide-react';
 
 
 
@@ -28,6 +28,7 @@ const Navbar = () => {
    const staffLinks = [
      { name: 'Dashboard', page: '/staff', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> },
      { name: 'Manage Queue', page: '/queueManagement', icon: <Users className="w-4 h-4 mr-2" /> },
+     { name: 'Records', page: '/records', icon: <Archive className="w-4 h-4 mr-2" /> },
    ];
  
    const adminLinks = [

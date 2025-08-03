@@ -48,18 +48,29 @@ function getTicketsByUser(req, res) {
 
 
 function getTicketsByOffice(req, res) {
-  Ticket.getByOffice(req.params.office, (err, tickets) => {
-    if (err) return res.status(500).json({ error: err });
+  const office = req.params.office;
+
+  const query = `
+    SELECT id, user_id, name, office, service, additional_info,
+           office_ticket_no, status, window_no, created_at
+    FROM tickets 
+    WHERE office = ? 
+      AND status IN ('done', 'cancelled')
+    ORDER BY created_at DESC
+  `;
+
+  db.query(query, [office], (err, tickets) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
 
     const enriched = tickets.map(ticket => ({
       ...ticket,
-      form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {},
-      office_ticket_no: ticket.office_ticket_no
+      form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {}
     }));
 
     res.json(enriched);
   });
 }
+
 
 function updateTicketStatus(req, res) {
   const { status, windowNo } = req.body;

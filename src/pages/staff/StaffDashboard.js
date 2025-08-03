@@ -91,13 +91,23 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      <button
-        onClick={() => navigate('/queueManagement')}
-        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
-      >
-        <Users size={24} className="mr-2" />
-        Manage Queue
-      </button>
+      <div className="flex flex-col md:flex-row gap-4">
+  <button
+    onClick={() => navigate('/queueManagement')}
+    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
+  >
+    <Users size={24} className="mr-2" />
+    Manage Queue
+  </button>
+
+  <button
+    onClick={() => navigate('/ticket-history')}
+    className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
+  >
+    📋 View Records
+  </button>
+</div>
+
     </div>
   );
 };

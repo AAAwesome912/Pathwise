@@ -1,12 +1,13 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const SECRET_KEY = 'your_secret_key'; 
+const verifyToken = require('../middleware/verifyToken');
 const db = require('../db');
 
 const router = express.Router();
+const SECRET_KEY = 'your_secret_key';
 
-// REGISTER ROUTE
+// -------------------- REGISTER --------------------
 router.post('/register', async (req, res) => {
   const {
     name, email, contact, address, password, role,
@@ -31,22 +32,18 @@ router.post('/register', async (req, res) => {
     if (!staffId || !office) {
       return res.status(400).json({ message: 'Staff ID and office are required for staff role.' });
     }
-
     if (office === 'Registrar' && !windowNo) {
       return res.status(400).json({ message: 'Window is required for Registrar office.' });
     }
-
     if (office === 'Library' && !section) {
       return res.status(400).json({ message: 'Section is required for Library office.' });
     }
-
     if (office === 'Departmental' && !department) {
       return res.status(400).json({ message: 'Department is required for Departmental office.' });
     }
   }
 
   try {
-    // Check if email already exists
     const [existing] = await db.promise().query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(409).json({ message: 'Email is already registered.' });
@@ -61,12 +58,7 @@ router.post('/register', async (req, res) => {
     `;
 
     await db.promise().query(query, [
-      name,
-      email,
-      contact,
-      address,
-      hashedPassword,
-      role,
+      name, email, contact, address, hashedPassword, role,
       role === 'student' ? studentId : null,
       role === 'staff' ? staffId : null,
       role === 'student' ? course : null,
@@ -77,17 +69,17 @@ router.post('/register', async (req, res) => {
     ]);
 
     res.status(201).json({ message: 'User registered successfully.' });
-
   } catch (err) {
     console.error('❌ Registration error:', err.message);
     res.status(500).json({ message: 'Registration failed.' });
   }
 });
 
-// LOGIN ROUTE
+// -------------------- LOGIN --------------------
 router.post('/login', async (req, res) => {
   const { email, password, role, name, address, contact } = req.body;
 
+  // Visitor login
   if (role === 'visitor') {
     if (!name || !address || !contact) {
       return res.status(400).json({ message: 'Please provide all visitor info.' });
@@ -104,8 +96,16 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({ message: 'Visitors login failed.' });
       }
 
+      // Optionally generate a token for visitor (can be used for session management)
+      const visitorToken = jwt.sign(
+        { id: result.insertId, name, role: 'visitor' },
+        SECRET_KEY,
+        { expiresIn: '1h' }
+      );
+
       return res.status(200).json({
         message: 'Visitor login successful',
+        token: visitorToken,
         user: {
           id: result.insertId,
           name,
@@ -116,12 +116,12 @@ router.post('/login', async (req, res) => {
       });
     });
 
-    return;
+    return; // Important to prevent further execution
   }
 
-  // student/staff/admin login
+  // Student, Staff, Admin login
   if (!email || !password || !role) {
-    return res.status(400).json({ message: 'All fields are required.' });
+    return res.status(400).json({ message: 'Email, password, and role are required.' });
   }
 
   try {
@@ -141,54 +141,75 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Incorrect password.' });
     }
 
-   // Check if user is already logged in (has active token)
-if (user.token) {
-  return res.status(403).json({ message: 'User is already logged in from another device.' });
-}
+    const token = jwt.sign(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      SECRET_KEY,
+      { expiresIn: '2h' }
+    );
 
-// Generate a new token
-const token = jwt.sign(
-  {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role
-  },
-  SECRET_KEY,
-  { expiresIn: '2h' }
-);
+    await db.promise().query('UPDATE users SET token = ? WHERE id = ?', [token, user.id]);
 
-// Save token in database
-await db.promise().query('UPDATE users SET token = ? WHERE id = ?', [token, user.id]);
-
-return res.status(200).json({
-  message: 'Login successful',
-  token,
-  user: {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    contact: user.contact,
-    address: user.address,
-    role: user.role,
-    course: user.course,
-    office: user.office,
-    studentId: user.student_Id,
-    staffId: user.staff_Id,
-    windowNo: user.windowNo,
-    section: user.section,
-    department: user.department
-  }
-});
-
-
+    return res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        contact: user.contact,
+        address: user.address,
+        role: user.role,
+        course: user.course,
+        office: user.office,
+        studentId: user.student_Id,
+        staffId: user.staff_Id,
+        windowNo: user.windowNo,
+        section: user.section,
+        department: user.department
+      }
+    });
   } catch (err) {
     console.error('❌ Login error:', err.message);
     return res.status(500).json({ message: 'Server error during login.' });
   }
 });
 
+// -------------------- GET ME --------------------
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const [results] = await db.promise().query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!results.length) return res.status(404).json({ message: 'User not found' });
 
+    const user = results[0];
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        contact: user.contact,
+        address: user.address,
+        role: user.role,
+        course: user.course,
+        office: user.office,
+        studentId: user.student_Id,
+        staffId: user.staff_Id,
+        windowNo: user.windowNo,
+        section: user.section,
+        department: user.department
+      }
+    });
+  } catch (err) {
+    console.error('❌ /me error:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// -------------------- LOGOUT --------------------
 router.post('/logout', async (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ message: 'User ID required for logout' });
@@ -201,6 +222,5 @@ router.post('/logout', async (req, res) => {
     res.status(500).json({ message: 'Logout failed' });
   }
 });
-
 
 module.exports = router;

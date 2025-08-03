@@ -19,6 +19,7 @@ import CampusMapPage from './pages/Student/Student-Visitor/CampusMapPage';
 import RequestServicePage from './pages/Student/Student-Visitor/RequestServicePage';
 
 import QueueManagementPage from './pages/Staff/QueueManagementPage';
+import TicketHistoryPage from './pages/Staff/ticketHistoryPage';
 
 import OfficeManagementPage from './pages/Admin/OfficeManagementPage'
 import ServiceManagementPage from './pages/Admin/ServiceManagementPage'
@@ -69,6 +70,8 @@ const App = () => {
 
           {/* Route of Staff (with layout) */}
             <Route path="/queueManagement" element={<Layout><QueueManagementPage /></Layout>} />
+            <Route path="/records" element={<Layout><TicketHistoryPage /></Layout>} />
+
 
           {/* Routes of Admin (with layout) */}
            <Route path="/servicemanagement" element={<Layout><ServiceManagementPage /></Layout>} />

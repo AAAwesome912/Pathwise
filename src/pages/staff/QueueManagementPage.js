@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
 const fieldLabels = {
   fullName: 'Full Name',
   email: 'Email',
@@ -38,14 +37,11 @@ const QueueManagementPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [windows, setWindows] = useState({});
-  
 
   const fetchQueue = useCallback(async () => {
     if (!user?.office) return;
     try {
       const { data } = await axios.get(`/api/tickets/office/${user.office}`);
-      
-
       const grouped = {};
       data.forEach((raw) => {
         const ticket = {
@@ -58,18 +54,16 @@ const QueueManagementPage = () => {
         if (!grouped[w]) grouped[w] = { in_progress: [], called: [], waiting: [] };
         grouped[w][ticket.status]?.push(ticket);
       });
-
       Object.values(grouped).forEach((g) => {
         Object.keys(g).forEach((k) =>
           g[k].sort((a, b) => a.office_ticket_no - b.office_ticket_no)
         );
       });
-
       setWindows(grouped);
     } catch (err) {
       console.error('Failed to fetch queue', err);
     }
- }, [user?.windowNo, user?.office]);
+  }, [user?.windowNo, user?.office]);
 
   useEffect(() => {
     if (!user?.office) return;
@@ -86,10 +80,7 @@ const QueueManagementPage = () => {
     );
   }
 
-
-  const patchStatus = async (id, status) =>
-    axios.patch(`/api/tickets/${id}/status`, { status });
- 
+  const patchStatus = async (id, status) => axios.patch(`/api/tickets/${id}/status`, { status });
 
   const handleServeNow = async (ticket) => {
     try {
@@ -101,17 +92,16 @@ const QueueManagementPage = () => {
   };
 
   const handleCall = async (ticket) => {
-  try {
-    await axios.patch(`/api/tickets/${ticket.id}/status`, {
-      status: 'called',
-      windowNo: user?.windowNo,
-    });
-    fetchQueue();
-  } catch {
-    toast.error('Failed to call');
-  }
-};
-
+    try {
+      await axios.patch(`/api/tickets/${ticket.id}/status`, {
+        status: 'called',
+        windowNo: user?.windowNo,
+      });
+      fetchQueue();
+    } catch {
+      toast.error('Failed to call');
+    }
+  };
 
   const handleFinish = async (ticket) => {
     try {
@@ -123,33 +113,35 @@ const QueueManagementPage = () => {
   };
 
   const handleResetTickets = async () => {
-  const confirmReset = window.confirm(
-    'Are you sure you want to reset the ticket numbers for this office? This action cannot be undone.'
-  );
-  if (!confirmReset) return;
+    const confirmReset = window.confirm(
+      'Are you sure you want to reset the ticket numbers for this office? This action cannot be undone.'
+    );
+    if (!confirmReset) return;
+    try {
+      await axios.post(`/api/tickets/reset-office-ticket`, {
+        office: user?.office,
+      });
+      toast.success('Ticket numbers have been reset.');
+      fetchQueue();
+    } catch (err) {
+      console.error('Reset failed:', err);
+      toast.error('Failed to reset ticket numbers.');
+    }
+  };
 
-  try {
-    await axios.post(`/api/tickets/reset-office-ticket`, {
-      office: user?.office,
-    });
-    toast.success('Ticket numbers have been reset.');
-    fetchQueue();
-  } catch (err) {
-    console.error('Reset failed:', err);
-    toast.error('Failed to reset ticket numbers.');
-  }
-};
+  const handleViewRecords = () => {
+    navigate('/records');
+  };
 
   const TicketCard = ({ t, showCall, showServe }) => (
     <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between gap-4">
         <div>
-            {t.window_no && (
-              <p className="text-sm text-gray-500">
-                Assigned: <span className="font-medium">{t.window_no}</span>
-              </p>
-            )}
-
+          {t.window_no && (
+            <p className="text-sm text-gray-500">
+              Assigned: <span className="font-medium">{t.window_no}</span>
+            </p>
+          )}
           <p
             className={`font-semibold ${
               t.status === 'called' ? 'text-orange-500' : 'text-blue-600'
@@ -157,14 +149,12 @@ const QueueManagementPage = () => {
           >
             Ticket #{t.office_ticket_no ?? t.id}
           </p>
-
           <p>
             <strong>Name:</strong> {t.name || 'N/A'}
           </p>
           <p>
             <strong>Service:</strong> {t.service}
           </p>
-
           {t.additional_info && (
             <details className="mt-1">
               <summary className="cursor-pointer text-sm text-blue-500 underline">
@@ -180,7 +170,6 @@ const QueueManagementPage = () => {
             </details>
           )}
         </div>
-
         <div className="flex flex-col gap-2 ml-auto">
           {showCall && (
             <button
@@ -188,7 +177,7 @@ const QueueManagementPage = () => {
               onClick={() => handleCall(t)}
             >
               Call Next
-               <Megaphone size={16} className="ml-1 text-white animate-wiggle" />
+              <Megaphone size={16} className="ml-1 text-white animate-wiggle" />
             </button>
           )}
           {showServe && (
@@ -202,7 +191,8 @@ const QueueManagementPage = () => {
           {t.status === 'in_progress' && (
             <button
               className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1 rounded"
-              onClick={() => handleFinish(t)}>
+              onClick={() => handleFinish(t)}
+            >
               Finish
             </button>
           )}
@@ -212,26 +202,48 @@ const QueueManagementPage = () => {
   );
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-xl">
-      <ToastContainer />
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+  <div className="bg-white p-4 md:p-8 rounded-xl shadow-xl">
+    <ToastContainer />
+    
+    {/* Header with View Records Button */}
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+      <h1 className="text-3xl font-bold text-gray-800">
         Queue Management&nbsp;
-        <span className="text-3xl font-bold text-gray-800 mb-8">({user?.office || 'Unknown'})</span>
+        <span className="text-3xl font-bold text-gray-800">
+          ({user?.office || 'Unknown'})
+        </span>
       </h1>
+      <button
+        onClick={handleViewRecords}
+        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+      >
+        View Records
+      </button>
+    </div>
 
-      {Object.keys(windows).length === 0 ? (
-        <p className="text-gray-600">No tickets in queue.</p>
-      ) : (
-        Object.entries(windows)
-          .filter(([windowNo]) => windowNo.toLowerCase() !== 'unassigned')
-          .map(([windowNo, buckets]) => (
+    {/* Main Queue Content */}
+    {Object.keys(windows).length === 0 ||
+      Object.values(windows).every(
+        (bucket) =>
+          bucket.in_progress.length === 0 &&
+          bucket.called.length === 0 &&
+          bucket.waiting.length === 0
+      ) ? (
+        <div className="text-center py-8 text-gray-600">
+          <p className="text-lg font-medium">🎧 No customers at the moment.</p>
+        </div>
+    ) : (
+      Object.entries(windows)
+        .filter(([windowNo]) => windowNo.toLowerCase() !== 'unassigned')
+        .map(([windowNo, buckets]) => (
           <div key={windowNo} className="mb-10">
-              <h2 className="text-xl font-bold text-gray-700 mb-3">
+            <h2 className="text-xl font-bold text-gray-700 mb-3">
               {windowNo && windowNo.toLowerCase() !== 'unassigned'
-                ? (windowNo.toLowerCase().includes('window') ? windowNo : `Window ${windowNo}`)
+                ? windowNo.toLowerCase().includes('window')
+                  ? windowNo
+                  : `Window ${windowNo}`
                 : 'Unassigned Window'}
             </h2>
-
 
             {buckets.in_progress.length > 0 && (
               <>
@@ -243,7 +255,6 @@ const QueueManagementPage = () => {
                 ))}
               </>
             )}
-
             {buckets.called.length > 0 && (
               <>
                 <h3 className="text-lg font-semibold text-orange-600 mb-2">
@@ -254,38 +265,39 @@ const QueueManagementPage = () => {
                 ))}
               </>
             )}
-
             {buckets.waiting.length > 0 && (
               <>
                 <h3 className="text-lg font-semibold text-blue-600 mb-2">
                   Waiting
                 </h3>
                 {buckets.waiting.map((t) => (
-                  <TicketCard key={t.id} t={t} showCall/>
+                  <TicketCard key={t.id} t={t} showCall />
                 ))}
               </>
             )}
           </div>
         ))
-      )}
-          <div className="mt-6 flex justify-between">
-                <button
-                  onClick={() => navigate('/staff')}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
-                >
-                  Back to Dashboard
-                </button>
+    )}
 
-                <button
-                  onClick={handleResetTickets}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-                >
-                  Reset Ticket Numbers
-                </button>
-              </div>
-
-                  </div>
-                );
-};
+    {/* Footer Buttons */}
+    <div className="mt-6 flex justify-between">
+      <button
+        onClick={() => navigate('/staff')}
+        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+      >
+        Back to Dashboard
+      </button>
+      <div className="flex gap-4">
+        <button
+          onClick={handleResetTickets}
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Reset Ticket Numbers
+        </button>
+      </div>
+    </div>
+  </div>
+);
+}
 
 export default QueueManagementPage;

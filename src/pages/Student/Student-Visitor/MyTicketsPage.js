@@ -6,46 +6,47 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
-// Preload sounds
-// const sounds = {
-//   called: new Audio('/sounds/called.mp3'),
-//   in_progress: new Audio('/sounds/in_progress.mp3'),
-//   done: new Audio('/sounds/done.mp3'),
-// };
-
-// ...imports remain unchanged
-
 const MyTicketsPage = ({ newlyCreatedTicket }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [historyFilter, setHistoryFilter] = useState('all');
   const [nowServing, setNowServing] = useState(null);
   const notifiedStatus = useRef({});
   const prevTicketsRef = useRef([]);
 
   useEffect(() => {
-  const stored = localStorage.getItem('notifiedStatus');
-  if (stored) {
-    notifiedStatus.current = JSON.parse(stored);
-  }
-}, []);
+    const stored = localStorage.getItem('notifiedStatus');
+    if (stored) {
+      notifiedStatus.current = JSON.parse(stored);
+    }
+  }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (user?.id) {
       const interval = setInterval(() => {
         axios
           .get(`/api/tickets/user/${user.id}`)
           .then(res => {
-              const newTickets = res.data;
+            const newTickets = res.data;
 
-              newTickets.forEach(ticket => {
-                const prevTicket = prevTicketsRef.current.find(t => t.id === ticket.id);
-                const prevStatus = prevTicket?.status;
-                const currentStatus = ticket.status;
-                const lastNotifiedStatus = notifiedStatus.current[ticket.id];
+            const currentActive = [];
+            const currentHistory = [];
 
-                if (prevStatus !== currentStatus && lastNotifiedStatus !== currentStatus) {
+            newTickets.forEach(ticket => {
+              if (ticket.status === 'done' || ticket.status === 'cancelled') {
+                currentHistory.push(ticket);
+              } else {
+                currentActive.push(ticket);
+              }
+
+              const prevTicket = prevTicketsRef.current.find(t => t.id === ticket.id);
+              const prevStatus = prevTicket?.status;
+              const currentStatus = ticket.status;
+              const lastNotifiedStatus = notifiedStatus.current[ticket.id];
+
+              if (prevStatus !== currentStatus && lastNotifiedStatus !== currentStatus) {
                 if (currentStatus === 'in_progress') {
                   toast.info(`🎫 Ticket #${ticket.office_ticket_no} is now being served.`);
                   const audio = new Audio('/sounds/in_progress.mp3');
@@ -53,10 +54,32 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                     console.warn('🔇 in_progress sound blocked:', err.message)
                   );
                 } else if (currentStatus === 'called') {
-                  toast.info(`📢 Ticket #${ticket.office_ticket_no} is being called. Please proceed to the counter.`);
-                  const audio = new Audio('/sounds/called.mp3');
+                  const windowMessage = ticket.window_no
+                    ? ` Please proceed to ${ticket.window_no}.`
+                    : ' Please proceed to the counter.';
+
+                  toast.info(`📢 Ticket #${ticket.office_ticket_no} is being called.${windowMessage}`);
+
+                  const windowNo = ticket.window_no;
+                  let audioSrc;
+
+                  switch (windowNo) {
+                    case 'Window 1':
+                      audioSrc = '/sounds/window1.mp3';
+                      break;
+                    case 'Window 2':
+                      audioSrc = '/sounds/window2.mp3';
+                      break;
+                    case 'Window 3':
+                      audioSrc = '/sounds/window3.mp3';
+                      break;
+                    default:
+                      audioSrc = '/sounds/called.mp3';
+                  }
+
+                  const audio = new Audio(audioSrc);
                   audio.play().catch(err =>
-                    console.warn('🔇 called sound blocked:', err.message)
+                    console.warn(`🔇 sound for window ${windowNo} blocked:`, err.message)
                   );
                 } else if (currentStatus === 'done') {
                   toast.success(`✅ Ticket #${ticket.office_ticket_no} has been served.`);
@@ -69,24 +92,20 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                 notifiedStatus.current[ticket.id] = currentStatus;
                 localStorage.setItem('notifiedStatus', JSON.stringify(notifiedStatus.current));
               }
+            });
 
-              });
-
-              // ✅ Update both ref and state
-              prevTicketsRef.current = newTickets;
-              setTickets(newTickets); // ✅ This was missing
-            })
-
+            prevTicketsRef.current = newTickets;
+            setTickets(currentActive);
+            setHistory(currentHistory);
+          })
           .catch(err => {
             console.error('❌ Failed to fetch tickets:', err);
           });
-      }, 1000); // Poll every 3 seconds
+      }, 1000);
 
       return () => clearInterval(interval);
     }
   }, [user]);
-
-
 
   useEffect(() => {
     const fetchNowServing = async () => {
@@ -158,7 +177,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
         </p>
       ) : (
         <div className="space-y-6">
-          {tickets.filter(ticket => ticket.status !== 'done' && ticket.status !== 'cancelled').map(ticket => (
+          {tickets.map(ticket => (
             <div
               key={ticket.id}
               className={`p-6 rounded-lg shadow-md border ${getBoxColor(ticket.status)}`}
@@ -172,8 +191,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                   <p className="text-sm text-gray-500">
                     Office: <span className="font-medium">{ticket.office}</span>
                   </p>
-                  
-                  {/* ✅ Display assigned window if available */}
+
                   {ticket.window_no && (
                     <p className="text-sm text-gray-500">
                       Assigned: <span className="font-medium"> {ticket.window_no}</span>
@@ -231,6 +249,40 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Ticket History</h2>
+
+          <label className="block mb-2 font-semibold">Filter by status:</label>
+          <select
+            value={historyFilter}
+            onChange={e => setHistoryFilter(e.target.value)}
+            className="mb-4 border rounded px-3 py-2"
+          >
+            <option value="all">All</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <div className="space-y-4">
+            {history
+              .filter(ticket =>
+                historyFilter === 'all' ? true : ticket.status === historyFilter
+              )
+              .map(ticket => (
+                <div key={ticket.id} className="p-4 bg-gray-100 border rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    <strong>Ticket #:</strong> {ticket.office_ticket_no} | <strong>Status:</strong> {ticket.status}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Office:</strong> {ticket.office} | <strong>Service:</strong> {ticket.service}
+                  </p>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
