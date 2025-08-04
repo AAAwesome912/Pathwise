@@ -46,23 +46,22 @@ function getTicketsByUser(req, res) {
   });
 }
 
-
-function getTicketsByOffice(req, res) {
-  const office = req.params.office;
+function getActiveTicketsByOffice(req, res) {
+  const { office } = req.params;
 
   const query = `
     SELECT id, user_id, name, office, service, additional_info,
-           office_ticket_no, status, window_no, created_at
+           office_ticket_no, status, window_no, created_at, form_data
     FROM tickets 
     WHERE office = ? 
-      AND status IN ('done', 'cancelled')
-    ORDER BY created_at DESC
+      AND status IN ('waiting', 'called', 'in_progress')
+    ORDER BY created_at ASC
   `;
 
-  db.query(query, [office], (err, tickets) => {
+  db.query(query, [office], (err, results) => {
     if (err) return res.status(500).json({ error: 'Database error' });
 
-    const enriched = tickets.map(ticket => ({
+    const enriched = results.map(ticket => ({
       ...ticket,
       form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {}
     }));
@@ -70,6 +69,49 @@ function getTicketsByOffice(req, res) {
     res.json(enriched);
   });
 }
+
+
+function getTicketsByOffice(req, res) {
+  const { office } = req.params;
+  const { statusGroup } = req.query;
+
+  const statusMap = {
+    active: ['waiting', 'called', 'in_progress'],
+    history: ['done', 'cancelled'],
+    all: ['done', 'cancelled'], // explicitly support "all" too
+    done: ['done'],
+    cancelled: ['cancelled'],
+  };
+
+  // default to 'active' if unknown or missing
+  const statuses = statusMap[statusGroup] || statusMap['active'];
+
+  const query = `
+    SELECT id, user_id, name, office, service, additional_info,
+           office_ticket_no, status, window_no, created_at, form_data
+    FROM tickets 
+    WHERE office = ? 
+      AND status IN (${statuses.map(() => '?').join(',')})
+    ORDER BY created_at DESC
+  `;
+
+  db.query(query, [office, ...statuses], (err, results) => {
+    if (err) {
+      console.error('Error fetching tickets by office:', err);
+      return res.status(500).json({ error: 'Failed to fetch tickets' });
+    }
+
+    // parse JSON field
+    const enriched = results.map(ticket => ({
+      ...ticket,
+      form_data: ticket.form_data ? JSON.parse(ticket.form_data) : {}
+    }));
+
+    res.json(enriched);
+  });
+}
+
+
 
 
 function updateTicketStatus(req, res) {
@@ -231,5 +273,6 @@ module.exports = {
   serveTicket,
   resetOfficeTicketNumbers,
   cancelTicket,
-  callTicket
+  callTicket,
+  getActiveTicketsByOffice
 };

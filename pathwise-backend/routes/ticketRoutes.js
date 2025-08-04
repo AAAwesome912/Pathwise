@@ -13,5 +13,6 @@ router.get('/office/:office/waiting-count', verifyToken, ticketController.getWai
 router.patch('/:id/serve', verifyToken, ticketController.serveTicket);
 router.post('/reset-office-ticket', verifyToken, ticketController.resetOfficeTicketNumbers);
 router.put('/cancel/:office/:officeTicketNo', verifyToken, ticketController.cancelTicket);
+router.get('/active/:office', verifyToken, ticketController.getActiveTicketsByOffice);
 
 module.exports = router;

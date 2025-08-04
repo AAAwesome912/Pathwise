@@ -101,7 +101,7 @@ const StaffDashboard = () => {
   </button>
 
   <button
-    onClick={() => navigate('/ticket-history')}
+    onClick={() => navigate('/records')}
     className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
   >
     📋 View Records

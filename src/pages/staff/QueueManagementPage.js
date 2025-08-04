@@ -41,7 +41,7 @@ const QueueManagementPage = () => {
   const fetchQueue = useCallback(async () => {
     if (!user?.office) return;
     try {
-      const { data } = await axios.get(`/api/tickets/office/${user.office}`);
+      const { data } = await axios.get(`/api/tickets/active/${user.office}`);
       const grouped = {};
       data.forEach((raw) => {
         const ticket = {
@@ -50,7 +50,8 @@ const QueueManagementPage = () => {
             ? safeParse(raw.additional_info)
             : raw.additional_info,
         };
-        const w = ticket.window_no || (ticket.status !== 'done' && user.windowNo) || 'Unassigned';
+
+       const w = ticket.window_no || 'unassigned';
         if (!grouped[w]) grouped[w] = { in_progress: [], called: [], waiting: [] };
         grouped[w][ticket.status]?.push(ticket);
       });
@@ -63,7 +64,7 @@ const QueueManagementPage = () => {
     } catch (err) {
       console.error('Failed to fetch queue', err);
     }
-  }, [user?.windowNo, user?.office]);
+  }, [user?.office]);
 
   useEffect(() => {
     if (!user?.office) return;
@@ -202,102 +203,102 @@ const QueueManagementPage = () => {
   );
 
   return (
-  <div className="bg-white p-4 md:p-8 rounded-xl shadow-xl">
-    <ToastContainer />
-    
-    {/* Header with View Records Button */}
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-      <h1 className="text-3xl font-bold text-gray-800">
-        Queue Management&nbsp;
-        <span className="text-3xl font-bold text-gray-800">
-          ({user?.office || 'Unknown'})
-        </span>
-      </h1>
-      <button
-        onClick={handleViewRecords}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
-      >
-        View Records
-      </button>
-    </div>
+    <div className="bg-white p-4 md:p-8 rounded-xl shadow-xl">
+      <ToastContainer />
 
-    {/* Main Queue Content */}
-    {Object.keys(windows).length === 0 ||
-      Object.values(windows).every(
-        (bucket) =>
-          bucket.in_progress.length === 0 &&
-          bucket.called.length === 0 &&
-          bucket.waiting.length === 0
-      ) ? (
-        <div className="text-center py-8 text-gray-600">
-          <p className="text-lg font-medium">🎧 No customers at the moment.</p>
-        </div>
-    ) : (
-      Object.entries(windows)
-        .filter(([windowNo]) => windowNo.toLowerCase() !== 'unassigned')
-        .map(([windowNo, buckets]) => (
-          <div key={windowNo} className="mb-10">
-            <h2 className="text-xl font-bold text-gray-700 mb-3">
-              {windowNo && windowNo.toLowerCase() !== 'unassigned'
-                ? windowNo.toLowerCase().includes('window')
-                  ? windowNo
-                  : `Window ${windowNo}`
-                : 'Unassigned Window'}
-            </h2>
-
-            {buckets.in_progress.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold text-green-600 mb-2">
-                  Currently Serving
-                </h3>
-                {buckets.in_progress.map((t) => (
-                  <TicketCard key={t.id} t={t} />
-                ))}
-              </>
-            )}
-            {buckets.called.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold text-orange-600 mb-2">
-                  Called
-                </h3>
-                {buckets.called.map((t) => (
-                  <TicketCard key={t.id} t={t} showServe />
-                ))}
-              </>
-            )}
-            {buckets.waiting.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold text-blue-600 mb-2">
-                  Waiting
-                </h3>
-                {buckets.waiting.map((t) => (
-                  <TicketCard key={t.id} t={t} showCall />
-                ))}
-              </>
-            )}
-          </div>
-        ))
-    )}
-
-    {/* Footer Buttons */}
-    <div className="mt-6 flex justify-between">
-      <button
-        onClick={() => navigate('/staff')}
-        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
-      >
-        Back to Dashboard
-      </button>
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Queue Management&nbsp;
+          <span className="text-3xl font-bold text-gray-800">
+            ({user?.office || 'Unknown'})
+          </span>
+        </h1>
         <button
-          onClick={handleResetTickets}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          onClick={handleViewRecords}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
         >
-          Reset Ticket Numbers
+          View Records
         </button>
       </div>
+
+      {Object.values(windows).every(
+          (bucket) =>
+            bucket.in_progress.length === 0 &&
+            bucket.called.length === 0 &&
+            bucket.waiting.length === 0
+        ) ? (
+          <div className="text-center py-8 text-gray-600">
+            <p className="text-lg font-medium">🎧 No customers at the moment.</p>
+          </div>
+      ) : (
+        Object.entries(windows)
+          .filter(([windowNo, buckets]) =>
+            buckets.in_progress.length > 0 ||
+            buckets.called.length > 0 ||
+            buckets.waiting.length > 0
+          )
+          .map(([windowNo, buckets]) => (
+            <div key={windowNo} className="mb-10">
+              <h2 className="text-xl font-bold text-gray-700 mb-3">
+                {windowNo && windowNo.toLowerCase() !== 'unassigned'
+                  ? windowNo.toLowerCase().includes('window')
+                    ? windowNo
+                    : `Window ${windowNo}`
+                  : 'Unassigned Window'}
+              </h2>
+
+              {buckets.in_progress.length > 0 && (
+                <>
+                  <h3 className="text-lg font-semibold text-green-600 mb-2">
+                    Currently Serving
+                  </h3>
+                  {buckets.in_progress.map((t) => (
+                    <TicketCard key={t.id} t={t} />
+                  ))}
+                </>
+              )}
+              {buckets.called.length > 0 && (
+                <>
+                  <h3 className="text-lg font-semibold text-orange-600 mb-2">
+                    Called
+                  </h3>
+                  {buckets.called.map((t) => (
+                    <TicketCard key={t.id} t={t} showServe />
+                  ))}
+                </>
+              )}
+              {buckets.waiting.length > 0 && (
+                <>
+                  <h3 className="text-lg font-semibold text-blue-600 mb-2">
+                    Waiting
+                  </h3>
+                  {buckets.waiting.map((t) => (
+                    <TicketCard key={t.id} t={t} showCall />
+                  ))}
+                </>
+              )}
+            </div>
+          ))
+      )}
+
+      <div className="mt-6 flex justify-between">
+        <button
+          onClick={() => navigate('/staff')}
+          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+        >
+          Back to Dashboard
+        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleResetTickets}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Reset Ticket Numbers
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-);
-}
+  );
+};
 
 export default QueueManagementPage;
