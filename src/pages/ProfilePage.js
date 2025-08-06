@@ -40,8 +40,8 @@ const ProfilePage = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Email Address:</label>
-          <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md">{user?.email || 'N/A'}</p>
+          <label className="block text-sm font-medium text-gray-700">Name:</label>
+          <p className="mt-1 text-md text-gray-800 bg-gray-100 p-3 rounded-md">{user?.name || 'N/A'}</p>
         </div>
 
         <div>

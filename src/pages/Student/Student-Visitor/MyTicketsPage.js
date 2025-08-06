@@ -12,6 +12,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
   const [tickets, setTickets] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyFilter, setHistoryFilter] = useState('all');
+  const [showHistory, setShowHistory] = useState(false);
   const [nowServing, setNowServing] = useState(null);
   const notifiedStatus = useRef({});
   const prevTicketsRef = useRef([]);
@@ -254,44 +255,64 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
 
       {history.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Ticket History</h2>
+           <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={() => setShowHistory(prev => !prev)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+            >
+              {showHistory ? 'Hide Ticket History' : 'Show Ticket History'}
+            </button>
 
-          <label className="block mb-2 font-semibold">Filter by status:</label>
-          <select
-            value={historyFilter}
-            onChange={e => setHistoryFilter(e.target.value)}
-            className="mb-4 border rounded px-3 py-2"
-          >
-            <option value="all">All</option>
-            <option value="done">Done</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-
-          <div className="space-y-4">
-            {history
-              .filter(ticket =>
-                historyFilter === 'all' ? true : ticket.status === historyFilter
-              )
-              .map(ticket => (
-                <div key={ticket.id} className="p-4 bg-gray-100 border rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    <strong>Ticket #:</strong> {ticket.office_ticket_no} | <strong>Status:</strong> {ticket.status}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>Office:</strong> {ticket.office} | <strong>Service:</strong> {ticket.service}
-                  </p>
-                </div>
-              ))}
+            <button
+              onClick={() => navigate('/Dashboard')}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+            >
+              Back to Dashboard
+            </button>
           </div>
+
+          {showHistory && (
+            <>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">Ticket History</h2>
+
+              <label className="block mb-2 font-semibold">Filter by status:</label>
+              <select
+                value={historyFilter}
+                onChange={e => setHistoryFilter(e.target.value)}
+                className="mb-4 border rounded px-3 py-2"
+              >
+                <option value="all">All</option>
+                <option value="done">Done</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+
+              <div className="space-y-4">
+               {history
+                  .filter(ticket =>
+                    historyFilter === 'all' ? true : ticket.status === historyFilter
+                  )
+                  .map(ticket => (
+                    <div key={ticket.id} className="p-4 bg-gray-100 border rounded-lg">
+                      <p className="text-sm text-gray-700">
+                        <strong>Status:</strong> {ticket.status}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Office:</strong> {ticket.office} | <strong>Service:</strong> {ticket.service}
+                      </p>
+                      {ticket.created_at && (
+                        <p className="text-sm text-gray-500">
+                          <strong>Date:</strong> {new Date(ticket.created_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
+              </div>
+            </>
+          )}
         </div>
       )}
-
-      <button
-        onClick={() => navigate('/Dashboard')}
-        className="mt-8 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
-      >
-        Back to Dashboard
-      </button>
+      
     </div>
   );
 };

@@ -43,13 +43,13 @@ const Navbar = () => {
  
    if (user.role === 'student' || user.role === 'visitor') {
      navLinks = studentOrVisitorLinks;
-     homePage = user.role === 'student' ? 'studentDashboard' : 'visitorDashboard';
+     homePage = user.role === 'student' ? '/student' : '/visitor';
    } else if (user.role === 'staff') {
      navLinks = staffLinks;
-     homePage = 'staffDashboard';
+     homePage = '/staff';
    } else if (user.role === 'admin') {
      navLinks = adminLinks;
-     homePage = 'adminDashboard';
+     homePage = '/admin';
    }
  
    const handleLogoutClick = () => {
@@ -87,9 +87,18 @@ const Navbar = () => {
        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
          <div className="flex items-center justify-between h-16">
            <div className="flex items-center">
-             <button onClick={() => navigate(homePage)} className="font-bold text-xl hover:text-blue-200 transition duration-150">
-               PathWise
-             </button>
+             <button
+                onClick={() => navigate(homePage)}
+                className="flex items-center gap-2 font-bold text-xl hover:text-blue-200 transition duration-150"
+              >
+                <img
+                  src="/logo192.png" 
+                  alt="PathWise Logo"
+                  className="h-8 w-8 object-contain"
+                />
+                PathWise
+              </button>
+
              <div className="hidden md:block">
                <div className="ml-10 flex items-baseline space-x-4">
                  {navLinks.map((link) => (
@@ -108,10 +117,10 @@ const Navbar = () => {
            </div>
            <div className="hidden md:block">
              <div className="ml-4 flex items-center md:ml-6">
-               <button className="p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
+               {/* <button className="p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-700 focus:ring-white">
                  <span className="sr-only">View notifications</span>
                  <Bell className="h-6 w-6" aria-hidden="true" />
-               </button>
+               </button> */}
                <div className="ml-3 relative">
                  <div>
                    <button
