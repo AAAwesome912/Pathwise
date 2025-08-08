@@ -3,7 +3,7 @@ const Ticket = require('../models/Ticket');
 
 
 function createTicket(req, res) {
-  const { user_id, name, office, service, additional_info, form_data } = req.body;
+  const { user_id, name, office, service, additional_info, form_data, priority_lane } = req.body;
 
   // Check if the user already has a non-cancelled ticket for the same office
   const checkQuery = `
@@ -20,8 +20,13 @@ function createTicket(req, res) {
       return res.status(400).json({ error: 'You already have a pending request in this office.' });
     }
 
+    const autoPriorityServices = ['Request for Academic Records', 'ID Verification', 'Borrow Books'];
+
+    // Determine final priority value
+    const isPriority = !!priority_lane || autoPriorityServices.includes(service);
+
     // Proceed to create ticket
-    Ticket.create({ user_id, name, office, service, additional_info, form_data }, (err, results) => {
+    Ticket.create({ user_id, name, office, service, additional_info, form_data, priority_lane: isPriority}, (err, results) => {
       if (err) return res.status(500).json({ error: err });
 
       const ticketId = results.insertId;
@@ -51,11 +56,11 @@ function getActiveTicketsByOffice(req, res) {
 
   const query = `
     SELECT id, user_id, name, office, service, additional_info,
-           office_ticket_no, status, window_no, created_at, form_data
+           office_ticket_no, status, window_no, created_at, form_data, priority_lane
     FROM tickets 
     WHERE office = ? 
       AND status IN ('waiting', 'called', 'in_progress')
-    ORDER BY created_at ASC
+    ORDER BY priority_lane DESC, created_at ASC
   `;
 
   db.query(query, [office], (err, results) => {
@@ -69,6 +74,7 @@ function getActiveTicketsByOffice(req, res) {
     res.json(enriched);
   });
 }
+
 
 
 function getTicketsByOffice(req, res) {

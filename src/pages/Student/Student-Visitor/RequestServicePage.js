@@ -17,6 +17,7 @@ const RequestServicePage = () => {
   address: '',
   course: '',
   yearLevel: '',
+  priorityLane: false,
 });
 
 useEffect(() => {
@@ -35,13 +36,16 @@ useEffect(() => {
 
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+  const { name, value, type, checked } = e.target;
 
+  if (type === "checkbox") {
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  } else {
     if (serviceName === "Request for Academic Records" && name === "requestType") {
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        certificationType: '', // reset conditional fields
+        certificationType: '',
         gradesSemester: '',
         authenticationType: '',
         otherDocument: '',
@@ -49,9 +53,13 @@ useEffect(() => {
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
-  };
+  }
+};
+
 
   const getFormFields = () => {
+   
+    
     if (serviceName === "Request for Academic Records") {
       return [
         { name: "fullName", label: "Full Name", type: "text", required: true },
@@ -64,7 +72,7 @@ useEffect(() => {
         { name: "purpose", label: "Purpose", type: "textarea", required: true }
       ];
     }
-
+  
     if (serviceName === "Borrow Books") {
       return [
 
@@ -85,7 +93,7 @@ useEffect(() => {
       { name: "Email", label: "Email", type: "text", required: true },
       { name: "contactNumber", label: "Contact Number", type: "text", required: false },
       { name: "address", label: "Address", type: "text", required: true }
-    ];
+  ];
   };
 
   const formFields = getFormFields();
@@ -101,6 +109,7 @@ const handleSubmit = async (e) => {
     address: formData.address,
     course: formData.course,
     yearLevel: formData.yearLevel,
+    priority_lane: formData.priorityLane,
     ...(formData.bookTitle && { bookTitle: formData.bookTitle }),
     ...(formData.lastAcademicYear && { lastAcademicYear: formData.lastAcademicYear }),
     ...(formData.requestType && { requestType: formData.requestType }),
@@ -117,6 +126,7 @@ const handleSubmit = async (e) => {
     name: formData.fullName,
     office: serviceName === "Borrow Books" ? "Library" : "Registrar",
     service: serviceName,
+    priority_lane: formData.priorityLane,
     additional_info: JSON.stringify(additionalInfo),  // ✅ structured JSON string
   };
 
@@ -197,7 +207,7 @@ const handleSubmit = async (e) => {
             </div>
           ))}
 
-          {serviceName === "Request for Academic Records" && (
+         { serviceName === "Request for Academic Records" && (
             <>
               <div>
                 <label htmlFor="requestType" className="block text-sm font-medium text-gray-700">Request Type</label>
@@ -285,8 +295,28 @@ const handleSubmit = async (e) => {
                   />
                 </div>
               )}
+             
             </>
           )}
+
+           {/* Priority Lane checkbox for all 3 services */}
+        {["Request for Academic Records", "ID Verification", "Borrow Books"].includes(serviceName) && (
+          <div className="mb-4">
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.priorityLane || false}
+                onChange={(e) =>
+                  setFormData({ ...formData, priorityLane: e.target.checked })
+                }
+                className="form-checkbox h-5 w-5 text-blue-600"
+              />
+              <span className="ml-2 text-blue-600">
+                Priority Lane (PWD, Senior, Pregnant)
+              </span>
+            </label>
+          </div>
+        )}
 
           <div className="flex justify-end space-x-3">
             <button

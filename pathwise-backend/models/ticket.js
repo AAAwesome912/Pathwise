@@ -1,7 +1,7 @@
 const db = require('../db');
 
 const Ticket = {
-  create: ({ user_id, name, office, service, additional_info, form_data }, callback) => {
+  create: ({ user_id, name, office, service, additional_info, form_data, priority_lane }, callback) => {
     const getMaxQuery = `SELECT MAX(office_ticket_no) AS maxNo FROM tickets WHERE office = ?`;
 
     db.query(getMaxQuery, [office], (err, results) => {
@@ -11,13 +11,13 @@ const Ticket = {
 
       const insertQuery = `
         INSERT INTO tickets 
-          (user_id, name, office, service, additional_info, form_data, status, office_ticket_no)
-        VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)
+          (user_id, name, office, service, additional_info, form_data, status, office_ticket_no, priority_lane)
+        VALUES (?, ?, ?, ?, ?, ?, 'waiting', ? , ?)
       `;
 
       db.query(
         insertQuery,
-        [user_id, name, office, service, additional_info, JSON.stringify(form_data), nextTicketNo],
+        [user_id, name, office, service, additional_info, JSON.stringify(form_data), nextTicketNo, priority_lane || false],
         callback
       );
     });
