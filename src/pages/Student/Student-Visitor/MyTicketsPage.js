@@ -166,8 +166,9 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
 
   return (
     <div className="bg-white p-8 rounded-xl shadow-xl">
+      <ToastContainer position="bottom-right"/>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">My Active Tickets</h1>
-      <ToastContainer position="bottom-right" />
+      
       <p>
         <strong>Now Serving:</strong> {nowServing || 'Loading...'}
       </p>
@@ -233,7 +234,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => navigate('/map')}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md transition duration-100"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded-md transition duration-100"
                   >
                     Use Campus Map
                   </button>
@@ -241,7 +242,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
                   {ticket.status === 'waiting' && (
                     <button
                       onClick={() => cancelTicket(ticket.office, ticket.office_ticket_no)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                      className="bg-red-500 hover:bg-red-500 text-white px-1 py-0  rounded transition"
                     >
                       Cancel
                     </button>
@@ -255,17 +256,17 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
 
       {history.length > 0 && (
         <div className="mt-10">
-           <div className="flex justify-between items-center mb-4">
+           <div className="flex justify-between items-center mb-2">
             <button
               onClick={() => setShowHistory(prev => !prev)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded transition"
             >
               {showHistory ? 'Hide Ticket History' : 'Show Ticket History'}
             </button>
 
             <button
               onClick={() => navigate('/Dashboard')}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+              className="bg-gray-200 hover:bg-gray-500 text-gray-700 font-medium py-2 px-2 rounded-md transition duration-100"
             >
               Back to Dashboard
             </button>

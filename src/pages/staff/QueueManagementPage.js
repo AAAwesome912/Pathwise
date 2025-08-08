@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback,useRef } from 'react';
 import axios from '../../utils/axiosInstance';
 import { Megaphone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,10 +33,50 @@ const safeParse = (data) => {
   }
 };
 
+
 const QueueManagementPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [windows, setWindows] = useState({});
+  const [prevTicketIds, setPrevTicketIds] = useState(new Set());
+  const audioRef = useRef(null);
+
+const fetchNewTicketNotifications = useCallback(async () => {
+  if (!user?.office) return;
+
+  try {
+    const { data } = await axios.get(`/api/tickets/active/${user.office}`);
+    const currentIds = new Set();
+
+    data.forEach((raw) => {
+      currentIds.add(raw.id); // Collect all current IDs
+    });
+
+    // Detect new ticket IDs not in the previous set
+    currentIds.forEach(id => {
+      if (!prevTicketIds.has(id)) {
+        audioRef.current?.play().catch(err => console.log('Sound play error:', err));
+        toast.info('🎟 New ticket added to the queue!', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
+    });
+
+    setPrevTicketIds(currentIds); // Save for next comparison
+  } catch (err) {
+    console.error('Failed to fetch new ticket notifications', err);
+  }
+}, [user?.office, prevTicketIds]);
+
+useEffect(() => {
+  const notifInterval = setInterval(() => {
+    fetchNewTicketNotifications();
+  }, 3000); // every 3 seconds
+
+  return () => clearInterval(notifInterval);
+}, [fetchNewTicketNotifications]);
+
 
   const fetchQueue = useCallback(async () => {
     if (!user?.office) return;
@@ -60,7 +100,9 @@ const QueueManagementPage = () => {
           g[k].sort((a, b) => a.office_ticket_no - b.office_ticket_no)
         );
       });
+
       setWindows(grouped);
+      
     } catch (err) {
       console.error('Failed to fetch queue', err);
     }
@@ -204,8 +246,13 @@ const QueueManagementPage = () => {
 
   return (
     <div className="bg-white p-4 md:p-8 rounded-xl shadow-xl">
+      {/* 🔊 Hidden audio for sound effect */}
+      <audio
+        ref={audioRef}
+        src={process.env.PUBLIC_URL + "/sounds/dong.mp3"}
+        preload="auto"
+      />
       <ToastContainer />
-
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">
           Queue Management&nbsp;

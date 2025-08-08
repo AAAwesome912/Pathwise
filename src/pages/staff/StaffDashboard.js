@@ -58,7 +58,7 @@ const StaffDashboard = () => {
       {/* 🔊 Hidden audio + toast container */}
       <audio
         ref={audioRef}
-        src={process.env.PUBLIC_URL + '/ding.mp3'}
+        src={process.env.PUBLIC_URL + '/sounds/dong.mp3'}
         preload="auto"
       />
       <ToastContainer />
