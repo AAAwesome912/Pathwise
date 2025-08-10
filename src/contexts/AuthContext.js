@@ -1,9 +1,9 @@
+// src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../utils/axiosInstance'; // ✅ Import the configured axios instance
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
-const BASE_URL = 'http://192.168.101.18:3001';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -31,11 +31,13 @@ export const AuthProvider = ({ children }) => {
           throw new Error("Please complete all required fields.");
         }
 
-        response = await axios.post(`${BASE_URL}/api/auth/login`, {
+        // ✅ Use axiosInstance instead of axios
+        response = await axiosInstance.post('/api/auth/login', {
           role, name, address, contact
         });
       } else {
-        response = await axios.post(`${BASE_URL}/api/auth/login`, {
+        // ✅ Use axiosInstance instead of axios
+        response = await axiosInstance.post('/api/auth/login', {
           role, email, password
         });
       }
@@ -61,7 +63,8 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       if (user?.id) {
-        await axios.post(`${BASE_URL}/api/auth/logout`, { id: user.id });
+        // ✅ Use axiosInstance instead of axios
+        await axiosInstance.post('/api/auth/logout', { id: user.id });
       }
     } catch (error) {
       console.error('Logout error:', error.response?.data || error.message);
@@ -89,7 +92,8 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem('user');
 
     if (token && storedUser) {
-      axios.get(`${BASE_URL}/api/auth/verify-token`, {
+      // ✅ Use axiosInstance instead of axios
+      axiosInstance.get('/api/auth/verify-token', {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(() => {
