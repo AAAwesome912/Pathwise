@@ -223,4 +223,65 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+router.put('/profile/:id', verifyToken, async (req, res) => {
+  const userIdFromToken = req.user.id; 
+  const userIdFromUrl = parseInt(req.params.id);
+
+  // Security check: Ensure the user can only edit their own profile
+  if (userIdFromToken !== userIdFromUrl) {
+    return res.status(403).json({ message: 'Forbidden: You can only edit your own profile.' });
+  }
+
+  // Dynamically build the update query to only update fields that are provided
+  const updateFields = Object.keys(req.body);
+  if (updateFields.length === 0) {
+    return res.status(400).json({ message: 'No fields to update.' });
+  }
+  
+  const setClauses = updateFields.map(field => `${field} = ?`).join(', ');
+  const values = updateFields.map(field => req.body[field]);
+  values.push(userIdFromUrl);
+
+  try {
+    const query = `
+      UPDATE users
+      SET ${setClauses}
+      WHERE id = ?
+    `;
+
+    const [results] = await db.promise().query(query, values);
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found or no changes made.' });
+    }
+
+    // Fetch the updated user data to send back to the client
+    const [updatedUser] = await db.promise().query('SELECT * FROM users WHERE id = ?', [userIdFromUrl]);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully!',
+      user: {
+        id: updatedUser[0].id,
+        name: updatedUser[0].name,
+        email: updatedUser[0].email,
+        contact: updatedUser[0].contact,
+        address: updatedUser[0].address,
+        role: updatedUser[0].role,
+        course: updatedUser[0].course,
+        office: updatedUser[0].office,
+        studentId: updatedUser[0].student_Id,
+        staffId: updatedUser[0].staff_Id,
+        windowNo: updatedUser[0].windowNo,
+        section: updatedUser[0].section,
+        department: updatedUser[0].department
+      }
+    });
+  } catch (err) {
+    console.error('❌ Profile update error:', err.message);
+    res.status(500).json({ message: 'Failed to update profile.' });
+  }
+});
+
 module.exports = router;
+

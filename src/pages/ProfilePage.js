@@ -64,13 +64,14 @@ const ProfilePage = () => {
         )}
 
         <div className="pt-4">
-          <button
-            type="button"
-            className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <Edit3 size={16} className="mr-2" /> Edit Profile
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/edit-profile')} // ADD THIS LINE
+          className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <Edit3 size={16} className="mr-2" /> Edit Profile
+        </button>
+      </div>
       </div>
 
       <button

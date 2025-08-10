@@ -12,6 +12,7 @@ import UserDashboard from './pages/Student/Student-Visitor/UserDashboard';
 import StaffDashboard from './pages/Staff/StaffDashboard';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 
+import EditProfilePage from './pages/EditProfilePage';
 import ProfilePage from './pages/ProfilePage';
 import ServiceListPage from './pages/Student/Student-Visitor/ServiceListPage';
 import MyTicketsPage from './pages/Student/Student-Visitor/MyTicketsPage';
@@ -62,6 +63,7 @@ const App = () => {
           <Route path="/Dashboard" element={<Layout><UserDashboard /></Layout>} />
 
           {/* Shared Routes of student and visitor (with layout) */}
+          <Route path="/edit-profile" element={<Layout><EditProfilePage /></Layout>} />
           <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
           <Route path="/services" element={<Layout><ServiceListPage /></Layout>} />
           <Route path="/my-tickets" element={<Layout><MyTicketsPage /></Layout>} />

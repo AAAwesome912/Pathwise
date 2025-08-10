@@ -23,4 +23,35 @@ const register = (req, res) => {
   });
 };
 
-module.exports = { register };
+const updateUserProfile = (req, res) => {
+  const userId = req.params.id;
+  const userData = {
+    ...req.body,
+    name: req.body.name?.trim(),
+    email: req.body.email?.trim(),
+    contact: req.body.contact?.trim(),
+    address: req.body.address?.trim(),
+    course: req.body.course?.trim()
+  };
+
+  if (!userId) {
+    return res.status(400).json({ message: 'User ID is required' });
+  }
+
+  // You can add validation for the fields here if needed
+  
+  updateUser(userId, userData, (err, result) => {
+    if (err) {
+      console.error('Error updating user:', err.message);
+      return res.status(500).json({ message: 'Error updating user profile', error: err.message });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found or no changes made' });
+    }
+    
+    res.json({ message: 'Profile updated successfully' });
+  });
+};
+
+module.exports = { register, updateUserProfile };

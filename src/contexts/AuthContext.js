@@ -12,10 +12,10 @@ export const AuthProvider = ({ children }) => {
 
   const redirectToDashboard = (role) => {
     switch (role) {
-      case 'student': return setCurrentPage('studentDashboard');
-      case 'staff': return setCurrentPage('staffDashboard');
-      case 'admin': return setCurrentPage('adminDashboard');
-      case 'visitor': return setCurrentPage('visitorDashboard');
+      case 'student': return setCurrentPage('student');
+      case 'staff': return setCurrentPage('staff');
+      case 'admin': return setCurrentPage('admin');
+      case 'visitor': return setCurrentPage('visitor');
       default: return setCurrentPage('login');
     }
   };
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, register, currentPage, navigate, pageNavigationProps }}
+      value={{ user, setUser, login, logout, register, currentPage, navigate, pageNavigationProps }}
     >
       {children}
     </AuthContext.Provider>
