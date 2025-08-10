@@ -20,13 +20,12 @@ function createTicket(req, res) {
       return res.status(400).json({ error: 'You already have a pending request in this office.' });
     }
 
-    const autoPriorityServices = ['Request for Academic Records', 'ID Verification', 'Borrow Books'];
-
-    // Determine final priority value
-    const isPriority = !!priority_lane || autoPriorityServices.includes(service);
-
+    // Determine final priority value based *only* on the checkbox value
+    // A priority lane is requested only if priority_lane is 1 (checked)
+    const isPriority = priority_lane ? 1 : 0;
+    
     // Proceed to create ticket
-    Ticket.create({ user_id, name, office, service, additional_info, form_data, priority_lane: isPriority}, (err, results) => {
+    Ticket.create({ user_id, name, office, service, additional_info, form_data, priority_lane: isPriority }, (err, results) => {
       if (err) return res.status(500).json({ error: err });
 
       const ticketId = results.insertId;
@@ -94,7 +93,7 @@ function getTicketsByOffice(req, res) {
 
   const query = `
     SELECT id, user_id, name, office, service, additional_info,
-           office_ticket_no, status, window_no, created_at, form_data
+           office_ticket_no, status, window_no, created_at, form_data, priority_lane
     FROM tickets 
     WHERE office = ? 
       AND status IN (${statuses.map(() => '?').join(',')})

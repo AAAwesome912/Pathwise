@@ -17,7 +17,7 @@ const RequestServicePage = () => {
   address: '',
   course: '',
   yearLevel: '',
-  priorityLane: false,
+  priority_lane: 0 ,
 });
 
 useEffect(() => {
@@ -29,7 +29,8 @@ useEffect(() => {
       contactNumber: user.contact || '',
       course: user.course || '',
       yearLevel: user.yearLevel || '',
-      address: user.address || ''
+      address: user.address || '',
+      priority_lane: 0 
     }));
   }
 }, [user]);
@@ -109,7 +110,6 @@ const handleSubmit = async (e) => {
     address: formData.address,
     course: formData.course,
     yearLevel: formData.yearLevel,
-    priority_lane: formData.priorityLane,
     ...(formData.bookTitle && { bookTitle: formData.bookTitle }),
     ...(formData.lastAcademicYear && { lastAcademicYear: formData.lastAcademicYear }),
     ...(formData.requestType && { requestType: formData.requestType }),
@@ -126,7 +126,7 @@ const handleSubmit = async (e) => {
     name: formData.fullName,
     office: serviceName === "Borrow Books" ? "Library" : "Registrar",
     service: serviceName,
-    priority_lane: formData.priorityLane,
+    priority_lane: formData.priority_lane ? 1 : 0,
     additional_info: JSON.stringify(additionalInfo),  // ✅ structured JSON string
   };
 
@@ -304,11 +304,14 @@ const handleSubmit = async (e) => {
           <div className="mb-4">
             <label className="inline-flex items-center">
               <input
-                type="checkbox"
-                checked={formData.priorityLane || false}
-                onChange={(e) =>
-                  setFormData({ ...formData, priorityLane: e.target.checked })
-                }
+                  type="checkbox"
+                  // Correctly checks the `priority_lane` property
+                  checked={formData.priority_lane === 1}
+                  // Correctly updates the `priority_lane` property
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    priority_lane: e.target.checked ? 1 : 0
+                  })}
                 className="form-checkbox h-5 w-5 text-blue-600"
               />
               <span className="ml-2 text-blue-600">

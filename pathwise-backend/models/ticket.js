@@ -35,13 +35,14 @@ const Ticket = {
 
 getTicketsByUserId: (userId, callback) => {
   const query = `
-    SELECT id, user_id, office, service, office_ticket_no, status, position, created_at, window_no
+    SELECT id, user_id, office, service, office_ticket_no, status, position, created_at, window_no, priority_lane
     FROM tickets
     WHERE user_id = ?
     ORDER BY created_at DESC
   `;
   db.query(query, [userId], callback);
 },
+
 
 
   updateStatus: (id, status, callback) => {

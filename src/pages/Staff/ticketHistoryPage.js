@@ -24,6 +24,7 @@ const fieldLabels = {
   otherDocument: 'Other Document',
   numberOfCopies: 'Number of Copies',
   purpose: 'Purpose',
+  priority_lane:'Priority',
 };
 
 const safeParse = (data) => {
