@@ -1,11 +1,52 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const verifyToken = require('../middleware/verifyToken');
 const db = require('../db');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
-const SECRET_KEY = 'your_secret_key';
+const SECRET_KEY = process.env.JWT_SECRET_KEY || 'your_secret_key';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+// Function to send a verification email with a 6-digit code
+const sendVerificationEmail = async (email, code) => {
+  const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  const mailOptions = {
+    from: `"Your App" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Email Verification',
+    html: `
+      <div style="font-family: sans-serif; text-align: center; color: #333;">
+        <h2 style="color: #4CAF50;">Welcome!</h2>
+        <p>Thank you for registering. Please use the following 6-digit code to verify your email address:</p>
+        <div style="font-size: 24px; font-weight: bold; margin: 20px 0; padding: 10px; background-color: #f1f1f1; display: inline-block; border-radius: 5px;">
+           ${code}
+        </div>
+        <p style="margin-top: 20px; font-size: 12px; color: #777;">
+          If you did not sign up for this, please ignore this email.
+        </p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Verification email with 6-digit code sent to ${email}`);
+  } catch (err) {
+    console.error('❌ Error sending verification email:', err);
+  }
+};
 
 // -------------------- REGISTER --------------------
 router.post('/register', async (req, res) => {
@@ -43,18 +84,28 @@ router.post('/register', async (req, res) => {
     }
   }
 
-  try {
-    const [existing] = await db.promise().query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      return res.status(409).json({ message: 'Email is already registered.' });
-    }
 
+  try {
+    const [existingUser] = await db.promise().query('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUser.length > 0) {
+      return res.status(409).json({ message: 'Email is already registered. Please log in.' });
+    }
+    
+    const [existingPendingUser] = await db.promise().query('SELECT id FROM pending_users WHERE email = ?', [email]);
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a random 6-digit number
+
+    if (existingPendingUser.length > 0) {
+        await db.promise().query('UPDATE pending_users SET verification_code = ? WHERE email = ?', [verificationCode, email]);
+        await sendVerificationEmail(email, verificationCode);
+        return res.status(200).json({ message: 'A new verification code has been sent to your email.' });
+    }
+    
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const query = `
-      INSERT INTO users
-        (name, email, contact, address, password, role, student_Id, staff_Id, course, office, windowNo, section, department)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pending_users
+        (name, email, contact, address, password, role, student_Id, staff_Id, course, office, windowNo, section, department, verification_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await db.promise().query(query, [
@@ -65,21 +116,64 @@ router.post('/register', async (req, res) => {
       role === 'staff' ? office : null,
       office === 'Registrar' ? windowNo : null,
       office === 'Library' ? section : null,
-      office === 'Departmental' ? department : null
+      office === 'Departmental' ? department : null,
+      verificationCode
     ]);
 
-    res.status(201).json({ message: 'User registered successfully.' });
+    await sendVerificationEmail(email, verificationCode);
+
+    res.status(200).json({ message: 'User registered. Please check your email for the verification code.' });
   } catch (err) {
     console.error('❌ Registration error:', err.message);
     res.status(500).json({ message: 'Registration failed.' });
   }
 });
 
-// -------------------- LOGIN --------------------
+// -------------------- VERIFY EMAIL --------------------
+router.post('/verify-email', async (req, res) => {
+  const { code, email } = req.body; // Expecting code and email from a form
+
+  if (!code || !email) {
+    return res.status(400).json({ message: 'Email and verification code are required.' });
+  }
+
+  try {
+    const [pendingUser] = await db.promise().query(
+      'SELECT * FROM pending_users WHERE verification_code = ? AND email = ?',
+      [code, email]
+    );
+
+    if (pendingUser.length === 0) {
+      return res.status(404).json({ message: 'Invalid verification code or email.' });
+    }
+
+    const user = pendingUser[0];
+
+    const insertQuery = `
+      INSERT INTO users
+        (name, email, contact, address, password, role, student_Id, staff_Id, course, office, windowNo, section, department, is_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `;
+
+    await db.promise().query(insertQuery, [
+      user.name, user.email, user.contact, user.address, user.password, user.role,
+      user.student_Id, user.staff_Id, user.course, user.office, user.windowNo, user.section, user.department
+    ]);
+
+    await db.promise().query('DELETE FROM pending_users WHERE id = ?', [user.id]);
+
+    res.status(200).json({ message: 'Email successfully verified. You can now log in.' });
+
+  } catch (err) {
+    console.error('❌ Verification error:', err.message);
+    res.status(500).json({ message: 'Email verification failed.' });
+  }
+});
+
+// ... (The rest of the code, including login, verify-token, etc., remains the same) ...
 router.post('/login', async (req, res) => {
   const { email, password, role, name, address, contact } = req.body;
 
-  // Visitor login
   if (role === 'visitor') {
     if (!name || !address || !contact) {
       return res.status(400).json({ message: 'Please provide all visitor info.' });
@@ -96,11 +190,10 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({ message: 'Visitors login failed.' });
       }
 
-      // Optionally generate a token for visitor (can be used for session management)
       const visitorToken = jwt.sign(
         { id: result.insertId, name, role: 'visitor' },
         SECRET_KEY,
-        { expiresIn: '1h' }
+        { expiresIn: '2h' }
       );
 
       return res.status(200).json({
@@ -116,10 +209,9 @@ router.post('/login', async (req, res) => {
       });
     });
 
-    return; // Important to prevent further execution
+    return;
   }
 
-  // Student, Staff, Admin login
   if (!email || !password || !role) {
     return res.status(400).json({ message: 'Email, password, and role are required.' });
   }
@@ -135,6 +227,11 @@ router.post('/login', async (req, res) => {
     }
 
     const user = results[0];
+
+    if (!user.is_verified) {
+      return res.status(401).json({ message: 'Please verify your email to log in.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -178,8 +275,10 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({ message: 'Server error during login.' });
   }
 });
+router.get('/verify-token', verifyToken, (req, res) => {
+  res.status(200).json({ message: 'Token is valid', user: req.user });
+});
 
-// -------------------- GET ME --------------------
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const [results] = await db.promise().query('SELECT * FROM users WHERE id = ?', [req.user.id]);
@@ -209,7 +308,6 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
-// -------------------- LOGOUT --------------------
 router.post('/logout', async (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ message: 'User ID required for logout' });
@@ -224,15 +322,13 @@ router.post('/logout', async (req, res) => {
 });
 
 router.put('/profile/:id', verifyToken, async (req, res) => {
-  const userIdFromToken = req.user.id; 
-  const userIdFromUrl = parseInt(req.params.id);
+  const userIdFromToken = req.user.id;
+  const userIdFromUrl = parseInt(req.params.id);
 
-  // Security check: Ensure the user can only edit their own profile
-  if (userIdFromToken !== userIdFromUrl) {
-    return res.status(403).json({ message: 'Forbidden: You can only edit your own profile.' });
-  }
+  if (userIdFromToken !== userIdFromUrl) {
+    return res.status(403).json({ message: 'Forbidden: You can only edit your own profile.' });
+  }
 
-  // Dynamically build the update query to only update fields that are provided
   const updateFields = Object.keys(req.body);
   if (updateFields.length === 0) {
     return res.status(400).json({ message: 'No fields to update.' });
@@ -255,7 +351,6 @@ router.put('/profile/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found or no changes made.' });
     }
 
-    // Fetch the updated user data to send back to the client
     const [updatedUser] = await db.promise().query('SELECT * FROM users WHERE id = ?', [userIdFromUrl]);
 
     res.json({
@@ -284,4 +379,3 @@ router.put('/profile/:id', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
-

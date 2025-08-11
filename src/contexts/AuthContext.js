@@ -1,6 +1,5 @@
-// src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axiosInstance from '../utils/axiosInstance'; // ✅ Import the configured axios instance
+import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
@@ -25,25 +24,20 @@ export const AuthProvider = ({ children }) => {
 
     try {
       let response;
-
       if (role === 'visitor') {
         if (!name || !address || !contact) {
           throw new Error("Please complete all required fields.");
         }
-
-        // ✅ Use axiosInstance instead of axios
         response = await axiosInstance.post('/api/auth/login', {
           role, name, address, contact
         });
       } else {
-        // ✅ Use axiosInstance instead of axios
         response = await axiosInstance.post('/api/auth/login', {
           role, email, password
         });
       }
 
       const { token, user: userData } = response.data;
-
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
 
@@ -63,7 +57,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       if (user?.id) {
-        // ✅ Use axiosInstance instead of axios
         await axiosInstance.post('/api/auth/logout', { id: user.id });
       }
     } catch (error) {
@@ -86,32 +79,29 @@ export const AuthProvider = ({ children }) => {
     setCurrentPage(page);
   };
 
-  // ✅ Auto-login when app loads
   useEffect(() => {
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
-    if (token && storedUser) {
-      // ✅ Use axiosInstance instead of axios
-      axiosInstance.get('/api/auth/verify-token', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(() => {
+    const verifyTokenAndRedirect = async () => {
+      if (token && storedUser) {
+        try {
+          await axiosInstance.get('/api/auth/verify-token');
           const userData = JSON.parse(storedUser);
+          console.log('User data from localStorage:', userData); // ✅ Added for debugging
           setUser(userData);
           redirectToDashboard(userData.role);
           toast.success(`🔓 Welcome back, ${userData.role}!`);
-        })
-        .catch(() => {
+        } catch (error) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           toast.warn('⚠️ Session expired. Please log in again.');
-          navigate('/login'); 
-        });
-    }
+        }
+      }
+    };
+    verifyTokenAndRedirect();
   }, []);
 
-  // Redirect logic based on current state
   useEffect(() => {
     if (user && currentPage === 'login') {
       redirectToDashboard(user.role);
@@ -128,5 +118,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => useContext(AuthContext);
