@@ -4,6 +4,8 @@ const cors = require('cors');
 require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/ticketRoutes');
+const servicesRouter = require('./routes/services');
+const adminRoutes = require('./routes/admin');
 const bodyParser = require('body-parser');
 
 // This array now includes your hardcoded local origins
@@ -37,6 +39,8 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/services', servicesRouter);
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {

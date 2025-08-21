@@ -249,7 +249,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '2h' }
     );
 
-    await db.promise().query('UPDATE users SET token = ? WHERE id = ?', [token, user.id]);
+    await db.promise().query('UPDATE users SET token = NULL WHERE id = ?', [user.id]);
 
     return res.status(200).json({
       message: 'Login successful',
@@ -321,6 +321,7 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// -------------------- EDIT OWN PROFILE --------------------
 router.put('/profile/:id', verifyToken, async (req, res) => {
   const userIdFromToken = req.user.id;
   const userIdFromUrl = parseInt(req.params.id);
@@ -334,6 +335,13 @@ router.put('/profile/:id', verifyToken, async (req, res) => {
     return res.status(400).json({ message: 'No fields to update.' });
   }
   
+  // Prevent regular users from changing sensitive fields like role or password
+  const forbiddenFields = ['password', 'role'];
+  const hasForbiddenField = updateFields.some(field => forbiddenFields.includes(field));
+  if (hasForbiddenField) {
+      return res.status(400).json({ message: `Cannot update forbidden fields: ${forbiddenFields.join(', ')}.` });
+  }
+
   const setClauses = updateFields.map(field => `${field} = ?`).join(', ');
   const values = updateFields.map(field => req.body[field]);
   values.push(userIdFromUrl);
@@ -377,5 +385,89 @@ router.put('/profile/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to update profile.' });
   }
 });
+
+// -------------------- ADMIN EDIT ANY USER'S PROFILE --------------------
+// This new route allows an admin to update any user's details, including their password.
+router.put('/admin/profile/:id', verifyToken, async (req, res) => {
+    // Check if the user making the request has the 'admin' role
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Forbidden: Only administrators can perform this action.' });
+    }
+
+    const userIdToUpdate = parseInt(req.params.id);
+    const updateData = req.body;
+    
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: 'No fields to update.' });
+    }
+
+    // Prepare fields and values for the SQL query
+    const setClauses = [];
+    const values = [];
+
+    // Handle password update separately to ensure it is hashed
+    if (updateData.newPassword) {
+        const hashedPassword = await bcrypt.hash(updateData.newPassword, 10);
+        setClauses.push('password = ?');
+        values.push(hashedPassword);
+        delete updateData.newPassword; // Remove it from the updateData object to avoid processing it again
+    }
+
+    // Handle other fields
+    for (const field in updateData) {
+        // Prevent admin from changing the user's role
+        if (field === 'role') {
+            return res.status(400).json({ message: 'Cannot update role via this endpoint.' });
+        }
+        setClauses.push(`${field} = ?`);
+        values.push(updateData[field]);
+    }
+
+    if (setClauses.length === 0) {
+        return res.status(400).json({ message: 'No valid fields to update.' });
+    }
+
+    values.push(userIdToUpdate);
+
+    try {
+        const query = `
+            UPDATE users
+            SET ${setClauses.join(', ')}
+            WHERE id = ?
+        `;
+
+        const [results] = await db.promise().query(query, values);
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: 'User not found or no changes made.' });
+        }
+
+        const [updatedUser] = await db.promise().query('SELECT * FROM users WHERE id = ?', [userIdToUpdate]);
+
+        res.json({
+            success: true,
+            message: 'User profile updated successfully!',
+            user: {
+                id: updatedUser[0].id,
+                name: updatedUser[0].name,
+                email: updatedUser[0].email,
+                contact: updatedUser[0].contact,
+                address: updatedUser[0].address,
+                role: updatedUser[0].role,
+                course: updatedUser[0].course,
+                office: updatedUser[0].office,
+                studentId: updatedUser[0].student_Id,
+                staffId: updatedUser[0].staff_Id,
+                windowNo: updatedUser[0].windowNo,
+                section: updatedUser[0].section,
+                department: updatedUser[0].department
+            }
+        });
+    } catch (err) {
+        console.error('❌ Admin profile update error:', err.message);
+        res.status(500).json({ message: 'Failed to update user profile.' });
+    }
+});
+
 
 module.exports = router;

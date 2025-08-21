@@ -1,345 +1,386 @@
-import React, {  useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../../utils/axiosInstance';
-import { useAuth } from '../../../contexts/AuthContext'; 
+import { useAuth } from '../../../contexts/AuthContext';
 
 const RequestServicePage = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth(); // assuming user object contains user.id
-  const location = useLocation();
-  const { serviceName } = location.state || {};
-  const [message, setMessage] = useState('');
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const location = useLocation();
+    const { serviceName } = location.state || {};
+    const [message, setMessage] = useState('');
+    const [services, setServices] = useState([]);
+    const [selectedOffice, setSelectedOffice] = useState('');
+    const [isServiceActive, setIsServiceActive] = useState(true); // New state to track if service is active
 
-  const [formData, setFormData] = useState({
-  fullName: '',
-  Email: '',
-  contactNumber: '',
-  address: '',
-  course: '',
-  yearLevel: '',
-  priority_lane: 0 ,
-});
+    const [formData, setFormData] = useState({
+        fullName: '',
+        Email: '',
+        contactNumber: '',
+        address: '',
+        course: '',
+        yearLevel: '',
+        priority_lane: 0,
+    });
 
-useEffect(() => {
-  if (user) {
-    setFormData(prev => ({
-      ...prev,
-      fullName: user.name || '',
-      Email: user.email || '',
-      contactNumber: user.contact || '',
-      course: user.course || '',
-      yearLevel: user.yearLevel || '',
-      address: user.address || '',
-      priority_lane: 0 
-    }));
-  }
-}, [user]);
+    // Effect to fetch services from the backend on component mount
+    useEffect(() => {
+        const fetchServices = async () => {
+            try {
+                const response = await axios.get('/api/services');
+                setServices(response.data);
+            } catch (err) {
+                console.error('Error fetching services:', err);
+                // Fallback to hardcoded services if API fails (and filter for active services)
+                setServices([
+                    { service_name: 'Request for Academic Records', office_name: 'Registrar', is_active: 1 },
+                    { service_name: 'Borrow Books', office_name: 'Library', is_active: 1 },
+                    { service_name: 'ID Verification', office_name: 'Registrar', is_active: 0 },
+                ]);
+            }
+        };
+        fetchServices();
+    }, []);
 
-
-  const handleChange = (e) => {
-  const { name, value, type, checked } = e.target;
-
-  if (type === "checkbox") {
-    setFormData(prev => ({ ...prev, [name]: checked }));
-  } else {
-    if (serviceName === "Request for Academic Records" && name === "requestType") {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        certificationType: '',
-        gradesSemester: '',
-        authenticationType: '',
-        otherDocument: '',
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  }
-};
-
-
-  const getFormFields = () => {
-   
-    
-    if (serviceName === "Request for Academic Records") {
-      return [
-        { name: "fullName", label: "Full Name", type: "text", required: true },
-        { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
-        { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"], required: true },
-        { name: "lastAcademicYear", label: "Academic Year Last Attended", type: "text", required: true },
-        { name: "contactNumber", label: "Contact Number", type: "text", required: true },
-        { name: "address", label: "Address", type: "text", required: true },
-        { name: "numberOfCopies", label: "Number of Copies", type: "number", required: true },
-        { name: "purpose", label: "Purpose", type: "textarea", required: true }
-      ];
-    }
-  
-    if (serviceName === "Borrow Books") {
-      return [
-
-        { name: "fullName", label: "Full Name", type: "text", required: true },
-        { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
-        { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
-        { name: "Email", label: "Email", type: "text", required: true },
-        { name: "contactNumber", label: "Contact Number", type: "text", required: false },
-        { name: "address", label: "Address", type: "text", required: true },
-        { name: "bookTitle", label: "Book Title/ISBN", type: "text", required: true }
-      ];
-    }
-
-    return [
-      { name: "fullName", label: "Full Name", type: "text", required: true },
-      { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
-      { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
-      { name: "Email", label: "Email", type: "text", required: true },
-      { name: "contactNumber", label: "Contact Number", type: "text", required: false },
-      { name: "address", label: "Address", type: "text", required: true }
-  ];
-  };
-
-  const formFields = getFormFields();
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  // Construct structured JSON for additional_info
-  const additionalInfo = {
-    fullName: formData.fullName,
-    email: formData.Email || '',  // capital 'E' as used in your form
-    contactNumber: formData.contactNumber,
-    address: formData.address,
-    course: formData.course,
-    yearLevel: formData.yearLevel,
-    ...(formData.bookTitle && { bookTitle: formData.bookTitle }),
-    ...(formData.lastAcademicYear && { lastAcademicYear: formData.lastAcademicYear }),
-    ...(formData.requestType && { requestType: formData.requestType }),
-    ...(formData.certificationType && { certificationType: formData.certificationType }),
-    ...(formData.gradesSemester && { gradesSemester: formData.gradesSemester }),
-    ...(formData.authenticationType && { authenticationType: formData.authenticationType }),
-    ...(formData.otherDocument && { otherDocument: formData.otherDocument }),
-    ...(formData.numberOfCopies && { numberOfCopies: formData.numberOfCopies }),
-    ...(formData.purpose && { purpose: formData.purpose }),
-  };
-
-  const ticketPayload = {
-    user_id: user.id,
-    name: formData.fullName,
-    office: serviceName === "Borrow Books" ? "Library" : "Registrar",
-    service: serviceName,
-    priority_lane: formData.priority_lane ? 1 : 0,
-    additional_info: JSON.stringify(additionalInfo),  // ✅ structured JSON string
-  };
-
-  try {
-    const res = await axios.post('/api/tickets', ticketPayload);
-    const ticketId = res.data.ticketId;
-
-    setMessage(`Your request for "${serviceName}" has been submitted!`);
-    
-    setTimeout(() => {
-      navigate('/my-tickets', {
-        state: {
-          ticketNumber: ticketId,
-          serviceName,
-          office: ticketPayload.office
+    // Effect to populate form data and check service status
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                fullName: user.name || '',
+                Email: user.email || '',
+                contactNumber: user.contact || '',
+                course: user.course || '',
+                yearLevel: user.yearLevel || '',
+                address: user.address || '',
+                priority_lane: 0,
+            }));
         }
-      });
-    }, 1000);
-  } catch (err) {
-    console.error(err);
-    setMessage('Something went wrong while submitting your ticket.');
-  }
-};
+
+        if (serviceName && services.length > 0) {
+            const service = services.find(s => s.service_name === serviceName);
+            if (service) {
+                setSelectedOffice(service.office_name);
+                setIsServiceActive(service.is_active === 1); // Set the active status
+            } else {
+                // If service is not found, treat it as inactive to prevent form submission
+                setIsServiceActive(false);
+            }
+        }
+    }, [user, serviceName, services]);
 
 
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
 
-  return (
-    <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Request: {serviceName || "Service"}</h1>
-      <p className="text-gray-600 mb-6">Please fill out the details below.</p>
+        if (type === "checkbox") {
+            setFormData(prev => ({ ...prev, [name]: checked ? 1 : 0 }));
+        } else {
+            if (serviceName === "Request for Academic Records" && name === "requestType") {
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: value,
+                    certificationType: '',
+                    gradesSemester: '',
+                    authenticationType: '',
+                    otherDocument: '',
+                }));
+            } else {
+                setFormData(prev => ({ ...prev, [name]: value }));
+            }
+        }
+    };
 
-      {message && (
-        <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700">{message}</div>
-      )}
+    const getFormFields = () => {
+        if (serviceName === "Request for Academic Records") {
+            return [
+                { name: "fullName", label: "Full Name", type: "text", required: true },
+                { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+                { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"], required: true },
+                { name: "lastAcademicYear", label: "Academic Year Last Attended", type: "text", required: true },
+                { name: "contactNumber", label: "Contact Number", type: "text", required: true },
+                { name: "address", label: "Address", type: "text", required: true },
+                { name: "numberOfCopies", label: "Number of Copies", type: "number", required: true },
+                { name: "purpose", label: "Purpose", type: "textarea", required: true }
+            ];
+        }
+        
+        if (serviceName === "Borrow Books") {
+            return [
+                { name: "fullName", label: "Full Name", type: "text", required: true },
+                { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+                { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
+                { name: "Email", label: "Email", type: "text", required: true },
+                { name: "contactNumber", label: "Contact Number", type: "text", required: false },
+                { name: "address", label: "Address", type: "text", required: true },
+                { name: "bookTitle", label: "Book Title/ISBN", type: "text", required: true }
+            ];
+        }
 
-      {!message && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {formFields.map(field => (
-            <div key={field.name}>
-              <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">
-                {field.label}
-              </label>
-              {field.type === 'textarea' ? (
-                <textarea
-                  id={field.name}
-                  name={field.name}
-                  rows="3"
-                  onChange={handleChange}
-                  value={formData[field.name] || ''}
-                  required={field.required}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                />
-              ) : field.type === 'select' ? (
-                <select
-                  id={field.name}
-                  name={field.name}
-                  value={formData[field.name] || ''}
-                  onChange={handleChange}
-                  required={field.required}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                >
-                  <option value="" disabled>-- Select Year Level --</option>
-                  {field.options.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={field.type}
-                  id={field.name}
-                  name={field.name}
-                  value={formData[field.name] || ''}
-                  onChange={handleChange}
-                  required={field.required}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                />
-              )}
-            </div>
-          ))}
+        return [
+            { name: "fullName", label: "Full Name", type: "text", required: true },
+            { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
+            { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
+            { name: "Email", label: "Email", type: "text", required: true },
+            { name: "contactNumber", label: "Contact Number", type: "text", required: false },
+            { name: "address", label: "Address", type: "text", required: true }
+        ];
+    };
 
-         { serviceName === "Request for Academic Records" && (
-            <>
-              <div>
-                <label htmlFor="requestType" className="block text-sm font-medium text-gray-700">Request Type</label>
-                <select
-                  id="requestType"
-                  name="requestType"
-                  value={formData.requestType || ''}
-                  onChange={handleChange}
-                  required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                >
-                  <option value="">-- Select --</option>
-                  <option value="Certification">Certification</option>
-                  <option value="Authentication">Authentication</option>
-                  <option value="TranscriptA&R">Transcript Application & Releasing</option>
-                </select>
-              </div>
+    const formFields = getFormFields();
 
-              {formData.requestType === "Certification" && (
-                <div>
-                  <label htmlFor="certificationType" className="block text-sm font-medium text-gray-700">Type of Certification</label>
-                  <select
-                    id="certificationType"
-                    name="certificationType"
-                    value={formData.certificationType || ''}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                  >
-                    <option value="">-- Select --</option>
-                    <option value="TransferofCredentials">Transfer of Credentials</option>
-                    <option value="Graduation">Graduation</option>
-                    <option value="EarnedUnits">Earned Units</option>
-                    <option value="Enrolment">Enrolment</option>
-                    <option value="COG">Certificate of Grades (Indicate Year & Semester)</option>
-                  </select>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // Construct structured JSON for additional_info
+        const additionalInfo = {
+            fullName: formData.fullName,
+            email: formData.Email || '',
+            contactNumber: formData.contactNumber,
+            address: formData.address,
+            course: formData.course,
+            yearLevel: formData.yearLevel,
+            ...(formData.bookTitle && { bookTitle: formData.bookTitle }),
+            ...(formData.lastAcademicYear && { lastAcademicYear: formData.lastAcademicYear }),
+            ...(formData.requestType && { requestType: formData.requestType }),
+            ...(formData.certificationType && { certificationType: formData.certificationType }),
+            ...(formData.gradesSemester && { gradesSemester: formData.gradesSemester }),
+            ...(formData.authenticationType && { authenticationType: formData.authenticationType }),
+            ...(formData.otherDocument && { otherDocument: formData.otherDocument }),
+            ...(formData.numberOfCopies && { numberOfCopies: formData.numberOfCopies }),
+            ...(formData.purpose && { purpose: formData.purpose }),
+        };
+
+        const ticketPayload = {
+            user_id: user.id,
+            name: formData.fullName,
+            office: selectedOffice, // Use the dynamically set office
+            service: serviceName,
+            priority_lane: formData.priority_lane ? 1 : 0,
+            additional_info: JSON.stringify(additionalInfo),
+        };
+
+        try {
+            const res = await axios.post('/api/tickets', ticketPayload);
+            const ticketId = res.data.ticketId;
+
+            setMessage(`Your request for "${serviceName}" has been submitted!`);
+            
+            setTimeout(() => {
+                navigate('/my-tickets', {
+                    state: {
+                        ticketNumber: ticketId,
+                        serviceName,
+                        office: selectedOffice, // Use the dynamically set office
+                    }
+                });
+            }, 1000);
+        } catch (err) {
+            console.error(err);
+            setMessage('Something went wrong while submitting your ticket.');
+        }
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Request: {serviceName || "Service"}</h1>
+            <p className="text-gray-600 mb-6">Please fill out the details below.</p>
+
+            {message && (
+                <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700">{message}</div>
+            )}
+
+            {!message && isServiceActive && (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {formFields.map(field => (
+                        <div key={field.name}>
+                            <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">
+                                {field.label}
+                            </label>
+                            {field.type === 'textarea' ? (
+                                <textarea
+                                    id={field.name}
+                                    name={field.name}
+                                    rows="3"
+                                    onChange={handleChange}
+                                    value={formData[field.name] || ''}
+                                    required={field.required}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                />
+                            ) : field.type === 'select' ? (
+                                <select
+                                    id={field.name}
+                                    name={field.name}
+                                    value={formData[field.name] || ''}
+                                    onChange={handleChange}
+                                    required={field.required}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                >
+                                    <option value="" disabled>-- Select --</option>
+                                    {field.options.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type={field.type}
+                                    id={field.name}
+                                    name={field.name}
+                                    value={formData[field.name] || ''}
+                                    onChange={handleChange}
+                                    required={field.required}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                />
+                            )}
+                        </div>
+                    ))}
+
+                    {serviceName === "Request for Academic Records" && (
+                        <>
+                            <div>
+                                <label htmlFor="requestType" className="block text-sm font-medium text-gray-700">Request Type</label>
+                                <select
+                                    id="requestType"
+                                    name="requestType"
+                                    value={formData.requestType || ''}
+                                    onChange={handleChange}
+                                    required
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                >
+                                    <option value="">-- Select --</option>
+                                    <option value="Certification">Certification</option>
+                                    <option value="Authentication">Authentication</option>
+                                    <option value="TranscriptA&R">Transcript Application & Releasing</option>
+                                </select>
+                            </div>
+
+                            {formData.requestType === "Certification" && (
+                                <div>
+                                    <label htmlFor="certificationType" className="block text-sm font-medium text-gray-700">Type of Certification</label>
+                                    <select
+                                        id="certificationType"
+                                        name="certificationType"
+                                        value={formData.certificationType || ''}
+                                        onChange={handleChange}
+                                        required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                    >
+                                        <option value="">-- Select --</option>
+                                        <option value="TransferofCredentials">Transfer of Credentials</option>
+                                        <option value="Graduation">Graduation</option>
+                                        <option value="EarnedUnits">Earned Units</option>
+                                        <option value="Enrolment">Enrolment</option>
+                                        <option value="COG">Certificate of Grades (Indicate Year & Semester)</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {formData.certificationType === "COG" && (
+                                <div>
+                                    <label htmlFor="gradesSemester" className="block text-sm font-medium text-gray-700">Indicate the year and semester</label>
+                                    <input
+                                        type="text"
+                                        id="gradesSemester"
+                                        name="gradesSemester"
+                                        value={formData.gradesSemester || ''}
+                                        onChange={handleChange}
+                                        required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                    />
+                                </div>
+                            )}
+
+                            {formData.requestType === "Authentication" && (
+                                <div>
+                                    <label htmlFor="authenticationType" className="block text-sm font-medium text-gray-700">Type of Document for Authentication</label>
+                                    <select
+                                        id="authenticationType"
+                                        name="authenticationType"
+                                        value={formData.authenticationType || ''}
+                                        onChange={handleChange}
+                                        required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                    >
+                                        <option value="">-- Select --</option>
+                                        <option value="TOR">Transcript of Records</option>
+                                        <option value="Diploma">Diploma</option>
+                                        <option value="Others">Other Academic Records</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {formData.authenticationType === "Others" && (
+                                <div>
+                                    <label htmlFor="otherDocument" className="block text-sm font-medium text-gray-700">Please specify the academic document</label>
+                                    <input
+                                        type="text"
+                                        id="otherDocument"
+                                        name="otherDocument"
+                                        value={formData.otherDocument || ''}
+                                        onChange={handleChange}
+                                        required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                                    />
+                                </div>
+                            )}
+                            
+                        </>
+                    )}
+
+                    {/* Priority Lane checkbox for all 3 services */}
+                    {["Request for Academic Records", "ID Verification", "Borrow Books"].includes(serviceName) && (
+                        <div className="mb-4">
+                            <label className="inline-flex items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.priority_lane === 1}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        priority_lane: e.target.checked ? 1 : 0
+                                    })}
+                                    className="form-checkbox h-5 w-5 text-blue-600"
+                                />
+                                <span className="ml-2 text-blue-600">
+                                    Priority Lane (PWD, Senior, Pregnant)
+                                </span>
+                            </label>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/services')}
+                            className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                        >
+                            Submit Request
+                        </button>
+                    </div>
+                </form>
+            )}
+
+            {!message && !isServiceActive && (
+                <div className="text-center p-8 text-red-600">
+                    <p className="text-xl font-semibold mb-4">This service is currently unavailable.</p>
+                    <p className="text-gray-700">
+                        The "{serviceName}" service is temporarily inactive. Please check back later.
+                    </p>
+                    <button
+                        onClick={() => navigate('/services')}
+                        className="mt-6 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                        Go back to Services
+                    </button>
                 </div>
-              )}
-
-              {formData.certificationType === "COG" && (
-                <div>
-                  <label htmlFor="gradesSemester" className="block text-sm font-medium text-gray-700">Indicate the year and semester</label>
-                  <input
-                    type="text"
-                    id="gradesSemester"
-                    name="gradesSemester"
-                    value={formData.gradesSemester || ''}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-              )}
-
-              {formData.requestType === "Authentication" && (
-                <div>
-                  <label htmlFor="authenticationType" className="block text-sm font-medium text-gray-700">Type of Document for Authentication</label>
-                  <select
-                    id="authenticationType"
-                    name="authenticationType"
-                    value={formData.authenticationType || ''}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                  >
-                    <option value="">-- Select --</option>
-                    <option value="TOR">Transcript of Records</option>
-                    <option value="Diploma">Diploma</option>
-                    <option value="Others">Other Academic Records</option>
-                  </select>
-                </div>
-              )}
-
-              {formData.authenticationType === "Others" && (
-                <div>
-                  <label htmlFor="otherDocument" className="block text-sm font-medium text-gray-700">Please specify the academic document</label>
-                  <input
-                    type="text"
-                    id="otherDocument"
-                    name="otherDocument"
-                    value={formData.otherDocument || ''}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                  />
-                </div>
-              )}
-             
-            </>
-          )}
-
-           {/* Priority Lane checkbox for all 3 services */}
-        {["Request for Academic Records", "ID Verification", "Borrow Books"].includes(serviceName) && (
-          <div className="mb-4">
-            <label className="inline-flex items-center">
-              <input
-                  type="checkbox"
-                  // Correctly checks the `priority_lane` property
-                  checked={formData.priority_lane === 1}
-                  // Correctly updates the `priority_lane` property
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    priority_lane: e.target.checked ? 1 : 0
-                  })}
-                className="form-checkbox h-5 w-5 text-blue-600"
-              />
-              <span className="ml-2 text-blue-600">
-                Priority Lane (PWD, Senior, Pregnant)
-              </span>
-            </label>
-          </div>
-        )}
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => navigate('/services')}
-              className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Submit Request
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
+            )}
+        </div>
+    );
 };
 
 export default RequestServicePage;
