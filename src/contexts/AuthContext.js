@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       setUser(null);
       setCurrentPage('login');
-      toast.info("👋 You have been logged out.");
+      
     }
   };
 
