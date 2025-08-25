@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/ticketRoutes');
 const servicesRouter = require('./routes/services');
+const appointmentRoutes = require('./routes/appointmentRoutes');
 const adminRoutes = require('./routes/admin');
 const bodyParser = require('body-parser');
 
@@ -41,6 +42,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/services', servicesRouter);
 app.use('/api/admin', adminRoutes);
+app.use('/api/appointments', appointmentRoutes);
+
+app.use((req, res, next) => {
+  console.log("404 for:", req.method, req.url);
+  next();
+});
+
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {

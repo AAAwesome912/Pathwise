@@ -80,27 +80,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+  const token = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
 
-    const verifyTokenAndRedirect = async () => {
-      if (token && storedUser) {
-        try {
-          await axiosInstance.get('/api/auth/verify-token');
-          const userData = JSON.parse(storedUser);
-          console.log('User data from localStorage:', userData); // ✅ Added for debugging
-          setUser(userData);
-          redirectToDashboard(userData.role);
-          toast.success(`🔓 Welcome back, ${userData.role}!`);
-        } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          toast.warn('⚠️ Session expired. Please log in again.');
-        }
+  const verifyTokenAndRedirect = async () => {
+    if (token && storedUser) {
+      try {
+        await axiosInstance.get('/api/auth/verify-token');
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        redirectToDashboard(userData.role);
+        toast.success(`🔓 Welcome back, ${userData.role}!`);
+      } catch (error) {
+        console.error('Token verification failed:', error.message);
+        // Correctly handle the session expiration
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null); // ⬅️ THIS IS THE KEY CHANGE
+        setCurrentPage('login'); // ⬅️ Optional, but good practice for immediate redirect
+        toast.warn('⚠️ Session expired. Please log in again.');
       }
-    };
-    verifyTokenAndRedirect();
-  }, []);
+    }
+  };
+  verifyTokenAndRedirect();
+}, []);
 
   useEffect(() => {
     if (user && currentPage === 'login') {

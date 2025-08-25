@@ -35,7 +35,7 @@ const RequestServicePage = () => {
                 setServices([
                     { service_name: 'Request for Academic Records', office_name: 'Registrar', is_active: 1 },
                     { service_name: 'Borrow Books', office_name: 'Library', is_active: 1 },
-                    { service_name: 'ID Verification', office_name: 'Registrar', is_active: 0 },
+                    { service_name: 'ID Verification', office_name: 'Registrar', is_active: 1 },
                 ]);
             }
         };
@@ -98,7 +98,7 @@ const RequestServicePage = () => {
                 { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
                 { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"], required: true },
                 { name: "lastAcademicYear", label: "Academic Year Last Attended", type: "text", required: true },
-                { name: "contactNumber", label: "Contact Number", type: "text", required: true },
+                { name: "contactNumber", label: "Contact Number", type: "text", required: false },
                 { name: "address", label: "Address", type: "text", required: true },
                 { name: "numberOfCopies", label: "Number of Copies", type: "number", required: true },
                 { name: "purpose", label: "Purpose", type: "textarea", required: true }
@@ -110,7 +110,7 @@ const RequestServicePage = () => {
                 { name: "fullName", label: "Full Name", type: "text", required: true },
                 { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
                 { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
-                { name: "Email", label: "Email", type: "text", required: true },
+                { name: "Email", label: "Email", type: "text", required: false },
                 { name: "contactNumber", label: "Contact Number", type: "text", required: false },
                 { name: "address", label: "Address", type: "text", required: true },
                 { name: "bookTitle", label: "Book Title/ISBN", type: "text", required: true }
@@ -121,7 +121,7 @@ const RequestServicePage = () => {
             { name: "fullName", label: "Full Name", type: "text", required: true },
             { name: "course", label: "Course", type: "select", options: ["BSIT", "BSInfoTech", "BSIS", "BSEMC", "BTVTED", "BSA", "BSHM"], required: true },
             { name: "yearLevel", label: "Year Level", type: "select", options: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year"], required: true },
-            { name: "Email", label: "Email", type: "text", required: true },
+            { name: "Email", label: "Email", type: "text", required: false },
             { name: "contactNumber", label: "Contact Number", type: "text", required: false },
             { name: "address", label: "Address", type: "text", required: true }
         ];

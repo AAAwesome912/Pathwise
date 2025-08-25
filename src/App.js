@@ -18,6 +18,8 @@ import ServiceListPage from './pages/Student/Student-Visitor/ServiceListPage';
 import MyTicketsPage from './pages/Student/Student-Visitor/MyTicketsPage';
 import CampusMapPage from './pages/Student/Student-Visitor/CampusMapPage';
 import RequestServicePage from './pages/Student/Student-Visitor/RequestServicePage';
+import AppointmentBooking from './pages/Student/Student-Visitor/AppointmentBooking';
+import AppointmentDetails from './pages/Student/Student-Visitor/AppointmentDetails';
 
 import QueueManagementPage from './pages/Staff/QueueManagementPage';
 import TicketHistoryPage from './pages/Staff/ticketHistoryPage';
@@ -29,8 +31,6 @@ import UserManagementPage from './pages/Admin/UserManagementPage'
 import NowServingDisplayPage from './pages/NowServingDisplayPage';
 
 import { AuthProvider } from './contexts/AuthContext';
-
-;
 
 // Layout component with navbar and footer
 const Layout = ({ children }) => (
@@ -69,6 +69,8 @@ const App = () => {
           <Route path="/my-tickets" element={<Layout><MyTicketsPage /></Layout>} />
           <Route path="/map" element={<Layout><CampusMapPage /></Layout>} />
           <Route path="/request-service" element={<Layout><RequestServicePage /></Layout>} />
+          <Route path="/appointment" element={<Layout><AppointmentBooking /></Layout>} />
+          <Route path="/appointmentDetails" element={<Layout><AppointmentDetails /></Layout>} />
 
           {/* Route of Staff (with layout) */}
             <Route path="/queueManagement" element={<Layout><QueueManagementPage /></Layout>} />

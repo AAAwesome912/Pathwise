@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext'; // ✅ fixed path
-import { Search, Ticket, User, Map } from 'lucide-react';
+import { Search, Ticket, Map, CalendarDays } from 'lucide-react';
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -40,21 +40,31 @@ return (
         </button>
 
         <button
-          onClick={() => navigate('/profile')}
-          className="bg-purple-500 hover:bg-purple-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
-        >
-          <User size={48} className="mb-2" />
-          <span className="text-xl">My Profile</span>
-          <span className="text-sm opacity-80">View and update your details</span>
-        </button>
-
-        <button
           onClick={() => navigate('/map')}
           className="bg-pink-500 hover:bg-pink-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
         >
           <Map size={48} className="mb-2" />
           <span className="text-xl">Campus Map</span>
           <span className="text-sm opacity-80">Navigate your way around campus</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/appointment')}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
+        >
+          <CalendarDays size={48} className="mb-2" />
+          <span className="text-xl">Online Appointment</span>
+          <span className="text-sm opacity-80">Secure your spot anytime, anywhere</span>
+        </button>
+
+        
+        <button
+          onClick={() => navigate('/appointmentDetails')}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
+        >
+          <CalendarDays size={48} className="mb-2" />
+          <span className="text-xl">My Appointment</span>
+          <span className="text-sm opacity-80">Check your appointment</span>
         </button>
       </div>
     </div>
