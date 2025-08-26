@@ -12,5 +12,6 @@ router.post('/confirm', verifyToken, appointmentController.confirmAppointment);
 router.get('/user/:userId', verifyToken, appointmentController.getUserAppointments);
 router.get('/users/:userId', appointmentController.getUserAppointments);
 router.get('/:id', verifyToken, appointmentController.getAppointmentById);
+router.put('/:id/cancel', appointmentController.cancelAppointment);
 
 module.exports = router;

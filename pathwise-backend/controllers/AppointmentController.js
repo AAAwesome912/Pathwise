@@ -25,55 +25,56 @@ function bookAppointment(req, res) {
 }
 
 function confirmAppointment(req, res) {
-  const { appointmentId } = req.body;
+  const { appointmentId } = req.body;
 
-  // 1) Mark appointment confirmed
-  Appointment.confirm(appointmentId, (err) => {
-    if (err) return res.status(500).json({ error: 'DB error confirming appointment' });
+  // 1) Mark appointment confirmed
+  Appointment.confirm(appointmentId, (err) => {
+    if (err) return res.status(500).json({ error: 'DB error confirming appointment' });
 
-    // 2) Load appointment to mirror details into ticket
-    db.query(`SELECT * FROM appointments WHERE id = ?`, [appointmentId], (err, rows) => {
-      if (err || rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
-      const appt = rows[0];
+    // 2) Load appointment to mirror details into ticket
+    db.query(`SELECT * FROM appointments WHERE id = ?`, [appointmentId], (err, rows) => {
+      if (err || rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
+      const appt = rows[0];
 
-      // 2.1) Prevent duplicate active ticket in same office
-      const dupSql = `
-        SELECT id FROM tickets
-        WHERE user_id = ? AND office = ? AND status NOT IN ('done','cancelled')
-        LIMIT 1
-      `;
-      db.query(dupSql, [appt.user_id, appt.office], (err, existing) => {
-        if (err) return res.status(500).json({ error: 'DB error duplicate check' });
-        if (existing.length > 0) {
-          return res.status(400).json({ error: 'You already have an active ticket in this office.' });
-        }
+      // 2.1) Prevent duplicate active ticket in same office
+      const dupSql = `
+        SELECT id FROM tickets
+        WHERE user_id = ? AND office = ? AND status NOT IN ('done','cancelled')
+        LIMIT 1
+      `;
+      db.query(dupSql, [appt.user_id, appt.office], (err, existing) => {
+        if (err) return res.status(500).json({ error: 'DB error duplicate check' });
+        if (existing.length > 0) {
+          return res.status(400).json({ error: 'You already have an active ticket in this office.' });
+        }
 
-        // 3) Create ticket with SAME details + priority
-        const formData = {
-          appointmentId: appt.id,
-          appointment_date: appt.appointment_date,
-          appointment_time: appt.appointment_time,
-          via: 'appointment'
-        };
+        // 3) Create ticket with SAME details + priority
+        // The Ticket.create model will handle JSON.stringify for us.
+        const formData = {
+          appointmentId: appt.id,
+          appointment_date: appt.appointment_date,
+          appointment_time: appt.appointment_time,
+          via: 'appointment'
+        };
 
-        Ticket.create(
-          {
-            user_id: appt.user_id,
-            name: appt.name,                    // keep same name
-            office: appt.office,
-            service: appt.service,
-            additional_info: appt.additional_info, // SAME JSON from request form
-            form_data: JSON.stringify(formData),   // keep appointment context
-            priority_lane: 1                       // reservation users prioritized
-          },
-          (err, ticketResult) => {
-            if (err) return res.status(500).json({ error: 'DB error creating ticket' });
-            res.json({ success: true, ticketId: ticketResult.insertId });
-          }
-        );
-      });
-    });
-  });
+        Ticket.create(
+          {
+            user_id: appt.user_id,
+            name: appt.name,                    // keep same name
+            office: appt.office,
+            service: appt.service,
+            additional_info: appt.additional_info, // SAME JSON from request form
+            form_data: formData,                   // NOW CORRECT, no stringify here
+            priority_lane: 1                       // reservation users prioritized
+          },
+          (err, ticketResult) => {
+            if (err) return res.status(500).json({ error: 'DB error creating ticket' });
+            res.json({ success: true, ticketId: ticketResult.insertId });
+          }
+        );
+      });
+    });
+  });
 }
 
 function getUserAppointments(req, res) {
@@ -146,10 +147,26 @@ function getAppointmentById(req, res) {
   });
 }
 
+function cancelAppointment(req, res) {
+  const { id } = req.params;
+  const sql = `UPDATE appointments SET status = 'cancelled' WHERE id = ?`;
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error('Error cancelling appointment:', err);
+      return res.status(500).json({ error: 'DB error cancelling appointment' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Appointment not found.' });
+    }
+    res.json({ success: true });
+  });
+}
+
 module.exports = {
   bookAppointment,
   confirmAppointment,
   getUserAppointments,
   getAvailableSlots,
-  getAppointmentById 
+  getAppointmentById,
+  cancelAppointment 
 };

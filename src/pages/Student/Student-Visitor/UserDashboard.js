@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext'; // ✅ fixed path
-import { Search, Ticket, Map, CalendarDays } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext'; 
+import { Search, Ticket, Map, CalendarDays, CalendarSearch } from 'lucide-react';
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -52,7 +52,7 @@ return (
           onClick={() => navigate('/appointment')}
           className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
         >
-          <CalendarDays size={48} className="mb-2" />
+          <CalendarSearch size={48} className="mb-2" />
           <span className="text-xl">Online Appointment</span>
           <span className="text-sm opacity-80">Secure your spot anytime, anywhere</span>
         </button>
@@ -60,7 +60,7 @@ return (
         
         <button
           onClick={() => navigate('/appointmentDetails')}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
+          className="bg-purple-500 hover:bg-purple-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center"
         >
           <CalendarDays size={48} className="mb-2" />
           <span className="text-xl">My Appointment</span>
