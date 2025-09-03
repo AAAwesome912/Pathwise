@@ -1,6 +1,22 @@
 const db = require('../db');
 const Appointment = require('../models/Appointment');
 const Ticket = require('../models/Ticket');
+const twilio = require('twilio');
+
+// Initialize the Twilio client with account credentials from environment variables.
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// Placeholder for an email sending function.
+// Replace with your actual email service integration (e.g., Nodemailer).
+const sendEmail = async (to, subject, body) => {
+  // Example using a placeholder. You would implement this with a library like Nodemailer
+  console.log(`✉️ Email sent to ${to} with subject: ${subject}`);
+  console.log(`Body: ${body}`);
+  return true;
+};
 
 function bookAppointment(req, res) {
   const { user_id, name, office, service, date, time, additional_info, priority_lane } = req.body;
@@ -25,56 +41,17 @@ function bookAppointment(req, res) {
 }
 
 function confirmAppointment(req, res) {
-  const { appointmentId } = req.body;
+  const { appointmentId } = req.body;
 
-  // 1) Mark appointment confirmed
-  Appointment.confirm(appointmentId, (err) => {
-    if (err) return res.status(500).json({ error: 'DB error confirming appointment' });
-
-    // 2) Load appointment to mirror details into ticket
-    db.query(`SELECT * FROM appointments WHERE id = ?`, [appointmentId], (err, rows) => {
-      if (err || rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
-      const appt = rows[0];
-
-      // 2.1) Prevent duplicate active ticket in same office
-      const dupSql = `
-        SELECT id FROM tickets
-        WHERE user_id = ? AND office = ? AND status NOT IN ('done','cancelled')
-        LIMIT 1
-      `;
-      db.query(dupSql, [appt.user_id, appt.office], (err, existing) => {
-        if (err) return res.status(500).json({ error: 'DB error duplicate check' });
-        if (existing.length > 0) {
-          return res.status(400).json({ error: 'You already have an active ticket in this office.' });
-        }
-
-        // 3) Create ticket with SAME details + priority
-        // The Ticket.create model will handle JSON.stringify for us.
-        const formData = {
-          appointmentId: appt.id,
-          appointment_date: appt.appointment_date,
-          appointment_time: appt.appointment_time,
-          via: 'appointment'
-        };
-
-        Ticket.create(
-          {
-            user_id: appt.user_id,
-            name: appt.name,                    // keep same name
-            office: appt.office,
-            service: appt.service,
-            additional_info: appt.additional_info, // SAME JSON from request form
-            form_data: formData,                   // NOW CORRECT, no stringify here
-            priority_lane: 1                       // reservation users prioritized
-          },
-          (err, ticketResult) => {
-            if (err) return res.status(500).json({ error: 'DB error creating ticket' });
-            res.json({ success: true, ticketId: ticketResult.insertId });
-          }
-        );
-      });
-    });
-  });
+  // Mark appointment as 'confirmed' and nothing else
+  Appointment.confirm(appointmentId, (err) => {
+    if (err) {
+      console.error('DB error confirming appointment:', err);
+      return res.status(500).json({ error: 'DB error confirming appointment' });
+    }
+    // The student's app simply needs a success message to know the confirmation was received.
+    res.json({ success: true, message: 'Appointment confirmed for in-campus visit.' });
+  });
 }
 
 function getUserAppointments(req, res) {
@@ -162,11 +139,88 @@ function cancelAppointment(req, res) {
   });
 }
 
+/**
+ * Handles the request from a staff member to notify a student.
+ */
+async function notifyStudent(req, res) {
+  try {
+    const { appointmentId } = req.body;
+
+    if (!appointmentId) {
+      return res.status(400).json({ success: false, message: 'Appointment ID is required.' });
+    }
+
+    // Step 1: Fetch the appointment details and the user's ID from the database.
+    const getApptSql = `
+      SELECT contact, user_id, office, service, additional_info
+      FROM appointments
+      WHERE id = ?
+    `;
+
+    const [appointment] = await db.query(getApptSql, [appointmentId]);
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+    
+    // Parse the additional_info JSON string to get the contact details.
+    let additionalInfo = {};
+    try {
+      additionalInfo = JSON.parse(appointment.additional_info);
+    } catch (e) {
+      console.error("Failed to parse additional info:", e);
+      return res.status(500).json({ success: false, message: 'Invalid additional info format.' });
+    }
+
+    const studentPhoneNumber = additionalInfo.phone_number;
+    const studentEmail = additionalInfo.email;
+    const studentName = appointment.contact;
+    const officeName = appointment.office;
+
+    if (!studentPhoneNumber && !studentEmail) {
+        return res.status(404).json({ success: false, message: 'Student contact information (phone number or email) is missing.' });
+    }
+
+    // Step 2: Trigger the SMS notification using Twilio if a phone number exists.
+    if (studentPhoneNumber) {
+      await twilioClient.messages.create({
+        to: studentPhoneNumber,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        body: `Hi ${studentName}, your appointment at the ${officeName} is ready. Please come to the office now.`
+      });
+      console.log(`✅ SMS notification successfully sent for appointment ID: ${appointmentId}`);
+    }
+
+    // Step 3: Trigger the email notification if an email address exists.
+    if (studentEmail) {
+        const emailSubject = `Your Appointment at the ${officeName} is Ready!`;
+        const emailBody = `Hi ${studentName},\n\nThis is a friendly reminder that your appointment at the ${officeName} is now ready. Please proceed to the office to claim your service.\n\nThank you!`;
+        await sendEmail(studentEmail, emailSubject, emailBody);
+    }
+
+    // Step 4: Create a dashboard notification record in the database.
+    // This assumes you have a `notifications` table with columns like `user_id`, `message`, `status`, and `timestamp`.
+    const notificationMessage = `Your appointment at the ${officeName} is ready.`;
+    const notificationSql = `INSERT INTO notifications (user_id, message, created_at) VALUES (?, ?, NOW())`;
+    await db.query(notificationSql, [appointment.user_id, notificationMessage]);
+    console.log(`🔔 Dashboard notification added for user ID: ${appointment.user_id}`);
+
+
+    // Step 5: Send a successful response back to the client.
+    res.status(200).json({ success: true, message: 'All notifications sent successfully.' });
+
+  } catch (error) {
+    console.error('❌ Failed to send notifications:', error);
+    res.status(500).json({ success: false, message: 'Failed to send notifications.', error: error.message });
+  }
+}
+
 module.exports = {
   bookAppointment,
   confirmAppointment,
   getUserAppointments,
   getAvailableSlots,
   getAppointmentById,
-  cancelAppointment 
+  cancelAppointment,
+  notifyStudent 
 };

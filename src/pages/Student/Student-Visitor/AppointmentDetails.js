@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axiosInstance';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -13,14 +13,14 @@ const AppointmentDetails = () => {
   // Get a specific appointmentId from the location state, if available.
   const appointmentId = location.state?.appointmentId;
 
-  // State variables for managing appointments, loading status, errors, and UI visibility.
+  // State variables for managing appointments, loading status, and errors.
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState({});
 
-  useEffect(() => {
-    // Redirect to the home page if the user is not authenticated.
+  // Memoize the data fetching function to prevent unnecessary re-creations.
+  const fetchData = useCallback(async () => {
     if (!user) {
       setError("User not authenticated.");
       setLoading(false);
@@ -28,41 +28,45 @@ const AppointmentDetails = () => {
       return;
     }
 
-    const fetchAppointments = async () => {
-      try {
-        setLoading(true);
-        // Fetch all appointments for the current user. This is a robust approach
-        // as it allows us to filter and handle various states on the client side.
-        const res = await axios.get(`/api/appointments/users/${user.id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
+    try {
+      setLoading(true);
+      // Fetch appointments for the current user.
+      const appointmentsRes = await axios.get(`/api/appointments/users/${user.id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
 
-        // Filter out appointments that have been cancelled or confirmed,
-        // as these are no longer 'active'.
-        const activeAppointments = res.data.filter(
-          (appt) => appt.status !== 'cancelled' && appt.status !== 'confirmed'
+      // Filter appointments and set state.
+      const activeAppointments = appointmentsRes.data.filter(
+        (appt) => appt.status !== 'cancelled' && appt.status !== 'confirmed'
+      );
+
+      if (appointmentId) {
+        const specificAppointment = activeAppointments.find(
+          (appt) => appt.id === parseInt(appointmentId)
         );
-        
-        // If a specific appointmentId was provided, find and display only that one.
-        // Otherwise, display all active appointments.
-        if (appointmentId) {
-          const specificAppointment = activeAppointments.find(
-            (appt) => appt.id === parseInt(appointmentId)
-          );
-          setAppointments(specificAppointment ? [specificAppointment] : []);
-        } else {
-          setAppointments(activeAppointments);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching appointment details:", err);
-        setError("Failed to load appointment details.");
-      } finally {
-        setLoading(false);
+        setAppointments(specificAppointment ? [specificAppointment] : []);
+      } else {
+        setAppointments(activeAppointments);
       }
-    };
 
-    fetchAppointments();
-  }, [appointmentId, user, navigate]);
+    } catch (err) {
+      console.error("❌ Error fetching data:", err);
+      if (err.response && err.response.status === 404) {
+        setError("API endpoints not found. Please check your backend routes.");
+      } else {
+        setError("Failed to load appointment details or notifications.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user, appointmentId, navigate]);
+
+  // Fetch data on component mount and set up a polling interval for appointments.
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval); // Clean up the interval on unmount
+  }, [fetchData]);
 
   // Handler for cancelling an appointment.
   const handleCancelAppointment = async (apptId) => {
@@ -70,8 +74,7 @@ const AppointmentDetails = () => {
       await axios.put(`/api/appointments/${apptId}/cancel`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      // Optimistically update the UI by filtering out the cancelled appointment.
-      setAppointments(appointments.filter(appt => appt.id !== apptId));
+      fetchData(); // Refetch data to update the UI
     } catch (err) {
       console.error("❌ Error cancelling appointment:", err);
       setError("Failed to cancel appointment. Please try again.");
@@ -79,19 +82,13 @@ const AppointmentDetails = () => {
   };
 
   // Handler for confirming an appointment on campus.
-  // This function has been updated to use a more standard API endpoint.
   const handleConfirmInCampus = async (apptId) => {
     try {
-      // The API call is now a PUT request to the main appointment endpoint with a status update in the body.
-      const res = await axios.put(`/api/appointments/${apptId}`, { status: 'confirmed' }, {
+      // Send a POST request to update the appointment status on the server.
+      await axios.post('/api/appointments/confirm', { appointmentId: apptId }, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (res.data.success) {
-        // Navigate to the tickets page upon successful confirmation.
-        navigate('/my-tickets', { state: { ticketId: res.data.ticketId } });
-      } else {
-        setError("Failed to confirm appointment. Server returned an error.");
-      }
+      fetchData(); // Refetch data to update the UI
     } catch (err) {
       console.error("❌ Error confirming appointment:", err);
       setError("Failed to confirm appointment. Please try again.");
@@ -115,7 +112,7 @@ const AppointmentDetails = () => {
       </div>
     );
   }
-  
+
   // Render a message and button if no appointments are found.
   if (appointments.length === 0) {
     return (
@@ -135,9 +132,10 @@ const AppointmentDetails = () => {
   return (
     <div className="p-8 max-w-2xl mx-auto bg-white shadow-md rounded-lg space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">My Appointments</h2>
+
       {appointments.map(appointment => {
         let additionalInfo = {};
-        
+
         try {
           // Attempt to parse additional_info, handling both string and object formats.
           if (typeof appointment.additional_info === 'string') {
@@ -165,9 +163,9 @@ const AppointmentDetails = () => {
               <p><span className="font-semibold text-gray-800">Date:</span> {new Date(appointment.appointment_date).toDateString()}</p>
               <p><span className="font-semibold text-gray-800">Time:</span> {appointment.appointment_time}</p>
             </div>
-            
+
             <hr className="my-4 border-gray-200" />
-            
+
             {/* Show/Hide additional information section */}
             <div className="flex items-center space-x-2">
               <h3 className="font-bold text-lg text-gray-800">Additional Information</h3>

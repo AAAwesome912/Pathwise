@@ -13,5 +13,6 @@ router.get('/user/:userId', verifyToken, appointmentController.getUserAppointmen
 router.get('/users/:userId', appointmentController.getUserAppointments);
 router.get('/:id', verifyToken, appointmentController.getAppointmentById);
 router.put('/:id/cancel', appointmentController.cancelAppointment);
+router.post('/notify', verifyToken, appointmentController.notifyStudent); // New route to handle student notifications
 
 module.exports = router;
