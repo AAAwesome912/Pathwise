@@ -3,20 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; 
 import { Users, BookOpen, MapPin,} from 'lucide-react';
 
-// Import only the components actually used
-// import UserManagementPage from './UserManagementPage';
-// import ServiceManagementPage from './ServiceManagementPage';
-// import OfficeManagementPage from './OfficeManagementPage';
-// import ProfilePage from './ProfilePage';
-
 const AdminDashboard = () => {
   const  navigate  = useNavigate();
   const  user  = useAuth();
   
   return (
-    <div className="bg-white p-8 rounded-xl shadow-xl">
+      <div className="bg-white p-8 rounded-xl shadow-xl">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
-      <p className="text-gray-600 mb-8">Welcome, {user?.email}! Manage the application settings and data.</p>
+      <p className="text-gray-600 mb-8">
+        Welcome, <span className="font-semibold text-gray-800">{user?.name || 'Admin'}</span>! 
+        Manage the application settings and data.
+      </p>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <button onClick={() => navigate('/userManagement')} className="bg-red-500 hover:bg-red-600 text-white font-semibold p-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex flex-col items-center justify-center">
           <Users size={48} className="mb-2" />
