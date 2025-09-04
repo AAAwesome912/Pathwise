@@ -1,4 +1,3 @@
-// ✅ AppointmentBooking.js (Corrected)
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "../../../utils/axiosInstance";
@@ -58,6 +57,7 @@ const AppointmentBooking = () => {
         yearLevel: user.yearLevel || "",
         address: user.address || "",
         priority_lane: 0,
+        priorityCategory: "", // Initialize new state for priority category
       }));
     }
   }, [showModal, user]);
@@ -79,9 +79,15 @@ const AppointmentBooking = () => {
           `/api/appointments/availability/${office}/${date}`
         );
         setSlots(res.data.slots || []);
+        setMessage(''); // Clear any previous error messages
       } catch (err) {
         console.error("❌ Error fetching availability:", err);
         setSlots([]);
+        if (err.response && err.response.status === 400) {
+          setMessage("❌ Cannot make an appointment for today or a past day.");
+        } else {
+          setMessage("❌ Failed to fetch available slots.");
+        }
       }
     };
     fetchAvailability();
@@ -99,6 +105,10 @@ const AppointmentBooking = () => {
         newState.gradesSemester = "";
         newState.authenticationType = "";
         newState.otherDocument = "";
+      }
+      // If priority_lane checkbox is unchecked, clear the category
+      if (name === "priority_lane" && !checked) {
+        newState.priorityCategory = "";
       }
       return newState;
     });
@@ -181,6 +191,9 @@ const AppointmentBooking = () => {
     }
   };
 
+  // Get today's date in YYYY-MM-DD format for the input min attribute
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div className="flex gap-8 p-8">
       {/* Conditionally render the message at the top */}
@@ -229,6 +242,7 @@ const AppointmentBooking = () => {
           className="w-full p-2 border rounded"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+          min={today} // This is the new attribute
         />
       </div>
       {/* Right side */}
@@ -358,20 +372,35 @@ const AppointmentBooking = () => {
                 </>
               )}
               {/* Added Priority Lane checkbox */}
-               <div className="mb-4">
-                 <label className="inline-flex items-center">
-                   <input
-                       type="checkbox"
-                       name="priority_lane"
-                       checked={formData.priority_lane === 1}
-                       onChange={handleChange}
-                       className="form-checkbox h-5 w-5 text-blue-600"
-                   />
-                   <span className="ml-2 text-blue-600">
-                       Priority Lane (PWD, Senior, Pregnant)
-                   </span>
-                 </label>
-               </div>
+              <div className="mb-4 flex flex-row items-center gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                      type="checkbox"
+                      name="priority_lane"
+                      checked={formData.priority_lane === 1}
+                      onChange={handleChange}
+                      className="form-checkbox h-5 w-5 text-blue-600 rounded-md"
+                  />
+                  <span className="ml-2 text-blue-600">
+                      Priority Lane (PWD, Senior, Pregnant)
+                  </span>
+                </label>
+                {/* Conditionally render the dropdown for priority category */}
+                {formData.priority_lane === 1 && (
+                  <select
+                    name="priorityCategory"
+                    value={formData.priorityCategory || ""}
+                    onChange={handleChange}
+                    required
+                    className="w-1/2 p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">-- Select Category --</option>
+                    <option value="PWD">PWD</option>
+                    <option value="Senior">Senior</option>
+                    <option value="Pregnant">Pregnant</option>
+                  </select>
+                )}
+              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button

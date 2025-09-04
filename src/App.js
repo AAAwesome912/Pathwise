@@ -22,6 +22,7 @@ import AppointmentBooking from './pages/Student/Student-Visitor/AppointmentBooki
 import AppointmentDetails from './pages/Student/Student-Visitor/AppointmentDetails';
 
 import QueueManagementPage from './pages/Staff/QueueManagementPage';
+import AppointmentManagement from './pages/Staff/AppointmentManagement';
 import TicketHistoryPage from './pages/Staff/ticketHistoryPage';
 
 import OfficeManagementPage from './pages/Admin/OfficeManagementPage'
@@ -74,6 +75,7 @@ const App = () => {
 
           {/* Route of Staff (with layout) */}
             <Route path="/queueManagement" element={<Layout><QueueManagementPage /></Layout>} />
+            <Route path="/appointmentManagement" element={<Layout><AppointmentManagement /></Layout>} />
             <Route path="/records" element={<Layout><TicketHistoryPage /></Layout>} />
 
 

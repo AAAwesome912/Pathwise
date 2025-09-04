@@ -65,6 +65,15 @@ function getUserAppointments(req, res) {
 function getAvailableSlots(req, res) {
   const { office, date } = req.params;
 
+  // Get today's date in YYYY-MM-DD format for comparison
+  const today = new Date().toISOString().split('T')[0];
+
+  // Check if the requested date is in the past or is today.
+  // Note: This comparison works reliably for YYYY-MM-DD formatted strings.
+  if (date <= today) {
+    return res.status(400).json({ error: 'Cannot make an appointment for today or a past day.' });
+  }
+
   // Build 09:00 .. 16:00
   const slots = [];
   for (let h = 9; h <= 16; h++) {
@@ -86,13 +95,15 @@ function getAvailableSlots(req, res) {
 
     const booked = Object.fromEntries(results.map(r => [r.hhmm, r.count]));
     const payload = slots.map(time => ({
-      time,                          // "09:00"
+      time,
       available: (booked[time] || 0) < 10
     }));
 
     res.json({ slots: payload });
   });
 }
+
+
 
 // ✅ Corrected getAppointmentById function with aliases
 function getAppointmentById(req, res) {

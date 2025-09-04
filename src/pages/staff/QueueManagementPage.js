@@ -23,6 +23,7 @@ const fieldLabels = {
   numberOfCopies: 'Number of Copies',
   purpose: 'Purpose',
   priority_lane:'Priority',
+  priorityCategory:'Priority Category',
 };
 
 const safeParse = (data) => {

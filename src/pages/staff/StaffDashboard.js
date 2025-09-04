@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from '../../utils/axiosInstance'; 
+import axios from '../../utils/axiosInstance';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -14,44 +14,41 @@ const StaffDashboard = () => {
   const audioRef = useRef(null);
 
   useEffect(() => {
-  const fetchQueueCount = async () => {
-  if (!user || !user.office) return;
+    const fetchQueueCount = async () => {
+      if (!user || !user.office) return;
 
-  try {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(
-      `/api/tickets/office/${user.office}/waiting-count`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(
+          `/api/tickets/office/${user.office}/waiting-count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const waitingCount = res.data.waitingCount || 0;
+
+        if (waitingCount > prevQueueCount.current) {
+          audioRef.current?.play().catch(err => console.log('Sound play error:', err));
+          toast.info('🔔 New student added to the queue!');
+        }
+
+        prevQueueCount.current = waitingCount;
+        setQueueCount(waitingCount);
+      } catch (err) {
+        console.error('Failed to fetch queue count', err);
+        toast.error('❌ Unauthorized access. Please log in again.');
       }
-    );
+    };
 
-    const waitingCount = res.data.waitingCount || 0;
+    fetchQueueCount();
 
-    if (waitingCount > prevQueueCount.current) {
-      audioRef.current?.play().catch(err => console.log('Sound play error:', err));
-      toast.info('🔔 New student added to the queue!');
-    }
+    const interval = setInterval(fetchQueueCount, 100);
 
-    prevQueueCount.current = waitingCount;
-    setQueueCount(waitingCount);
-  } catch (err) {
-    console.error('Failed to fetch queue count', err);
-    toast.error('❌ Unauthorized access. Please log in again.');
-  }
-};
-
-
-  fetchQueueCount();
-
-  const interval = setInterval(fetchQueueCount, 100);
-
-  return () => clearInterval(interval);
-}, [user]);
-
-
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <div className="bg-white p-8 rounded-xl shadow-xl">
@@ -61,7 +58,19 @@ const StaffDashboard = () => {
         src={process.env.PUBLIC_URL + '/sounds/dong.mp3'}
         preload="auto"
       />
-      <ToastContainer />
+      {/* 1. Add ToastContainer props here */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000} // This will auto-close the toast after 5 seconds
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick={true} // This allows closing the toast by clicking on it
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Staff Dashboard</h1>
       <p className="text-gray-600 mb-6">
         Welcome, <span className="font-semibold text-gray-800">{user?.name || 'Staff'}</span>!<br />
@@ -92,21 +101,29 @@ const StaffDashboard = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
-  <button
-    onClick={() => navigate('/queueManagement')}
-    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
-  >
-    <Users size={24} className="mr-2" />
-    Manage Queue
-  </button>
+        <button
+          onClick={() => navigate('/queueManagement')}
+          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
+        >
+          <Users size={24} className="mr-2" />
+          Manage Queue
+        </button>
 
-  <button
-    onClick={() => navigate('/records')}
-    className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
-  >
-    📋 View Records
-  </button>
-</div>
+        <button
+          onClick={() => navigate('/appointmentManagement')}
+          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
+        >
+          <Users size={24} className="mr-2" />
+          Manage Appointment Booking
+        </button>
+
+        <button
+          onClick={() => navigate('/records')}
+          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center justify-center text-lg"
+        >
+          📋 View Records
+        </button>
+      </div>
 
     </div>
   );

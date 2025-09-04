@@ -187,7 +187,7 @@ const MyTicketsPage = ({ newlyCreatedTicket }) => {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-semibold text-blue-600">{ticket.service}</h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xl text-gray-500">
                     Ticket #: <span className="font-medium">{ticket.office_ticket_no}</span>
                   </p>
                   <p className="text-sm text-gray-500">

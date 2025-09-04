@@ -13,6 +13,9 @@ const RequestServicePage = () => {
     const [selectedOffice, setSelectedOffice] = useState('');
     const [isServiceActive, setIsServiceActive] = useState(true); // New state to track if service is active
 
+    // New state for the priority category dropdown
+    const [priorityCategory, setPriorityCategory] = useState('');
+
     const [formData, setFormData] = useState({
         fullName: '',
         Email: '',
@@ -74,7 +77,11 @@ const RequestServicePage = () => {
         const { name, value, type, checked } = e.target;
 
         if (type === "checkbox") {
+            // Reset the priority category if the checkbox is unchecked
             setFormData(prev => ({ ...prev, [name]: checked ? 1 : 0 }));
+            if (!checked) {
+                setPriorityCategory('');
+            }
         } else {
             if (serviceName === "Request for Academic Records" && name === "requestType") {
                 setFormData(prev => ({
@@ -149,6 +156,9 @@ const RequestServicePage = () => {
             ...(formData.otherDocument && { otherDocument: formData.otherDocument }),
             ...(formData.numberOfCopies && { numberOfCopies: formData.numberOfCopies }),
             ...(formData.purpose && { purpose: formData.purpose }),
+            
+            // Add priority category to additional_info if priority_lane is checked
+            ...(formData.priority_lane === 1 && { priorityCategory: priorityCategory }),
         };
 
         const ticketPayload = {
@@ -327,23 +337,37 @@ const RequestServicePage = () => {
                         </>
                     )}
 
-                    {/* Priority Lane checkbox for all 3 services */}
+                    {/* Priority Lane checkbox and new dropdown */}
                     {["Request for Academic Records", "ID Verification", "Borrow Books"].includes(serviceName) && (
-                        <div className="mb-4">
+                        <div className="flex items-center space-x-4 mb-4">
                             <label className="inline-flex items-center">
                                 <input
                                     type="checkbox"
+                                    name="priority_lane"
                                     checked={formData.priority_lane === 1}
-                                    onChange={(e) => setFormData({
-                                        ...formData,
-                                        priority_lane: e.target.checked ? 1 : 0
-                                    })}
-                                    className="form-checkbox h-5 w-5 text-blue-600"
+                                    onChange={handleChange}
+                                    className="form-checkbox h-5 w-5 text-blue-600 rounded-sm"
                                 />
                                 <span className="ml-2 text-blue-600">
-                                    Priority Lane (PWD, Senior, Pregnant)
+                                    Priority Lane
                                 </span>
                             </label>
+
+                            {/* Conditionally rendered dropdown for priority category */}
+                            {formData.priority_lane === 1 && (
+                                <select
+                                    name="priorityCategory"
+                                    value={priorityCategory}
+                                    onChange={(e) => setPriorityCategory(e.target.value)}
+                                    required
+                                    className="block w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                                >
+                                    <option value="" disabled>Select Category</option>
+                                    <option value="PWD">PWD</option>
+                                    <option value="Senior">Senior</option>
+                                    <option value="Pregnant">Pregnant</option>
+                                </select>
+                            )}
                         </div>
                     )}
 

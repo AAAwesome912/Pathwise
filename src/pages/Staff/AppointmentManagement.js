@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from '../../utils/axiosInstance';
 import { useAuth } from '../../contexts/AuthContext';
 
-const StaffDashboard = () => {
+const AppointmentManagement = () => {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,4 +119,4 @@ const StaffDashboard = () => {
   );
 };
 
-export default StaffDashboard;
+export default AppointmentManagement;
